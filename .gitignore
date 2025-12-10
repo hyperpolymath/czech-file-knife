@@ -1,0 +1,19 @@
+# Build outputs
+*.o
+*.a
+*.so
+*.exe
+
+# Editor
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
