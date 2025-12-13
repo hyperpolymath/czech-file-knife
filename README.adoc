@@ -1,1 +1,145 @@
-= czech-file-knife
+= Czech File Knife
+
+*Cloud-native Swiss File Knife - unified interface for 20+ storage backends*
+
+== Overview
+
+Czech File Knife (CFK) is a universal file management tool that treats all storage
+backends (local, cloud, distributed, exotic) as a unified filesystem.
+
+== Tech Stack
+
+=== Languages
+[cols="1,3"]
+|===
+| Language | Purpose
+
+| *Rust* | Core engine, providers, cache, VFS
+| *Ada/SPARK* | TUI with formal verification
+| *Nickel* | Configuration language
+|===
+
+=== Storage Backends (20+)
+
+==== Local & Network
+- Local filesystem (all OS)
+- NFS, SMB/CIFS, AFP
+- SFTP, WebDAV
+- 9P (WSL2, QEMU)
+
+==== Cloud
+- Dropbox, Google Drive, OneDrive, Box
+- S3 (AWS, MinIO, R2, Wasabi, B2)
+- Syncthing
+
+==== Distributed
+- IPFS, AFS (Andrew File System)
+
+==== Exotic Protocols
+- Gopher, Gemini, NNTP/NNTPS
+- RTSP, BitTorrent, DAT/Hypercore
+- Freenet, I2P, Tor Onion, Matrix
+
+=== Web Protocols
+[cols="1,2"]
+|===
+| Protocol | Use
+
+| HTTP/1.1 | Legacy compatibility
+| HTTP/2 | Multiplexed requests
+| HTTP/3 (QUIC) | Low-latency transport
+| WebSocket | Real-time sync
+| gRPC | High-performance RPC
+| GraphQL | Flexible queries
+|===
+
+=== Serialization Formats
+[cols="1,2"]
+|===
+| Format | Use
+
+| *JSON* | API responses, config
+| *NDJSON* | Streaming/log data
+| *Cap'n Proto* | Zero-copy IPC, high-performance
+| *FlatBuffers* | Game/embedded (like Cap'n Proto)
+| *MessagePack* | Binary JSON alternative
+| *CBOR* | Compact binary (IoT)
+| *Protocol Buffers* | gRPC, cross-language
+| *TOML* | Config files
+| *Nickel* | Typed config
+|===
+
+=== Transport Layers
+- TCP, QUIC (HTTP/3), UDP
+- Unix sockets, Named pipes
+- PGM, NORM, RMTP (reliable multicast)
+
+=== Databases (Cache)
+- sled (default, pure Rust)
+- SurrealDB (multi-model)
+- LMDB (via heed)
+- DragonflyDB (Redis-compatible)
+- redb
+
+=== External Integrations
+- aria2 (high-speed downloads)
+- agrep (fuzzy search)
+- pandoc (document conversion)
+- tesseract (OCR)
+- eza (modern ls)
+
+=== Build System
+- Just (primary)
+- Guix (reproducible builds)
+- Nix (fallback)
+- Cargo
+
+== Project Structure
+
+```
+czech-file-knife/
+├── cfk-core/           # Core traits, types, errors
+├── cfk-providers/      # Storage backends + transports
+├── cfk-cache/          # Caching layer (sled/SurrealDB/LMDB)
+├── cfk-search/         # Full-text search (Tantivy)
+├── cfk-vfs/            # FUSE virtual filesystem
+├── cfk-cli/            # Rust CLI
+├── cfk-tui/            # Ada/SPARK TUI
+├── cfk-ios/            # iOS File Provider
+└── cfk-integrations/   # External tools (aria2, pandoc, etc.)
+```
+
+== Quick Start
+
+```bash
+# Build
+just build
+
+# Run CLI
+just run ls cfk://local/
+
+# Mount as FUSE
+just mount ~/cfk-mount
+
+# Run TUI
+just tui
+```
+
+== Platform Support
+
+|===
+| Platform | CLI | FUSE | Cloud | Status
+
+| Linux x86_64 | ✅ | ✅ | ✅ | Primary
+| Linux ARM64 | ✅ | ✅ | ✅ | Supported
+| macOS | ✅ | ✅ | ✅ | Supported
+| Windows | ✅ | ⚠️ | ✅ | WinFsp
+| iOS | ❌ | ❌ | ✅ | File Provider
+| Android | ✅ | ❌ | ✅ | Termux
+| RISC-V | ✅ | ✅ | ✅ | Experimental
+| z/OS | ⚠️ | ❌ | ⚠️ | Research
+|===
+
+== License
+
+AGPL-3.0-or-later OR Palimpsest-0.8
