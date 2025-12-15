@@ -7,6 +7,8 @@
 //! - LMDB: Ultra-fast memory-mapped (via heed)
 //! - DragonflyDB: Redis-compatible (via redis crate)
 
+#![allow(dead_code)] // Placeholder structs for future implementation
+
 use async_trait::async_trait;
 use cfk_core::{CfkResult, VirtualPath, Entry};
 use bytes::Bytes;

@@ -236,3 +236,218 @@ impl StorageBackend for LocalBackend {
         Ok(SpaceInfo::unknown())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use futures::StreamExt;
+    use tempfile::TempDir;
+
+    fn make_backend(dir: &TempDir) -> LocalBackend {
+        LocalBackend::new("test", dir.path())
+    }
+
+    fn make_path(backend: &LocalBackend, p: &str) -> VirtualPath {
+        VirtualPath::new(backend.id(), p)
+    }
+
+    #[tokio::test]
+    async fn test_backend_properties() {
+        let tmp = TempDir::new().unwrap();
+        let backend = make_backend(&tmp);
+
+        assert_eq!(backend.id(), "test");
+        assert_eq!(backend.display_name(), "Local Filesystem");
+        assert!(backend.is_available().await);
+        assert!(backend.capabilities().read);
+        assert!(backend.capabilities().write);
+    }
+
+    #[tokio::test]
+    async fn test_create_and_read_file() {
+        let tmp = TempDir::new().unwrap();
+        let backend = make_backend(&tmp);
+        let path = make_path(&backend, "/test.txt");
+
+        // Write file
+        let data = Bytes::from("Hello, World!");
+        let options = WriteOptions { overwrite: true, ..Default::default() };
+        let entry = backend.write_file(&path, data.clone(), &options).await.unwrap();
+
+        assert!(entry.is_file());
+        assert_eq!(entry.name(), Some("test.txt"));
+
+        // Read file
+        let read_opts = ReadOptions::default();
+        let mut stream = backend.read_file(&path, &read_opts).await.unwrap();
+        let mut content = Vec::new();
+        while let Some(chunk) = stream.next().await {
+            content.extend_from_slice(&chunk.unwrap());
+        }
+        assert_eq!(content, b"Hello, World!");
+    }
+
+    #[tokio::test]
+    async fn test_write_without_overwrite_fails() {
+        let tmp = TempDir::new().unwrap();
+        let backend = make_backend(&tmp);
+        let path = make_path(&backend, "/test.txt");
+
+        // First write succeeds
+        let options = WriteOptions { overwrite: false, ..Default::default() };
+        backend.write_file(&path, Bytes::from("first"), &options).await.unwrap();
+
+        // Second write should fail
+        let result = backend.write_file(&path, Bytes::from("second"), &options).await;
+        assert!(matches!(result, Err(CfkError::AlreadyExists(_))));
+    }
+
+    #[tokio::test]
+    async fn test_create_directory() {
+        let tmp = TempDir::new().unwrap();
+        let backend = make_backend(&tmp);
+        let path = make_path(&backend, "/subdir/nested");
+
+        let entry = backend.create_directory(&path).await.unwrap();
+        assert!(entry.is_directory());
+    }
+
+    #[tokio::test]
+    async fn test_list_directory() {
+        let tmp = TempDir::new().unwrap();
+        let backend = make_backend(&tmp);
+
+        // Create some files and dirs
+        backend.write_file(
+            &make_path(&backend, "/file1.txt"),
+            Bytes::from("content1"),
+            &WriteOptions { overwrite: true, ..Default::default() },
+        ).await.unwrap();
+
+        backend.write_file(
+            &make_path(&backend, "/file2.txt"),
+            Bytes::from("content2"),
+            &WriteOptions { overwrite: true, ..Default::default() },
+        ).await.unwrap();
+
+        backend.create_directory(&make_path(&backend, "/subdir")).await.unwrap();
+
+        // List root
+        let listing = backend
+            .list_directory(&VirtualPath::root("test"), &ListOptions::default())
+            .await
+            .unwrap();
+
+        assert_eq!(listing.entries.len(), 3);
+        let names: Vec<_> = listing.entries.iter().filter_map(|e| e.name()).collect();
+        assert!(names.contains(&"file1.txt"));
+        assert!(names.contains(&"file2.txt"));
+        assert!(names.contains(&"subdir"));
+    }
+
+    #[tokio::test]
+    async fn test_delete_file() {
+        let tmp = TempDir::new().unwrap();
+        let backend = make_backend(&tmp);
+        let path = make_path(&backend, "/to_delete.txt");
+
+        backend.write_file(&path, Bytes::from("delete me"), &WriteOptions::default()).await.unwrap();
+
+        // Delete
+        backend.delete(&path, &DeleteOptions::default()).await.unwrap();
+
+        // Should not exist now
+        let result = backend.get_metadata(&path).await;
+        assert!(matches!(result, Err(CfkError::NotFound(_))));
+    }
+
+    #[tokio::test]
+    async fn test_delete_nonexistent_with_force() {
+        let tmp = TempDir::new().unwrap();
+        let backend = make_backend(&tmp);
+        let path = make_path(&backend, "/nonexistent.txt");
+
+        // Without force - should fail
+        let result = backend.delete(&path, &DeleteOptions::default()).await;
+        assert!(matches!(result, Err(CfkError::NotFound(_))));
+
+        // With force - should succeed
+        let options = DeleteOptions { force: true, ..Default::default() };
+        backend.delete(&path, &options).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_copy_file() {
+        let tmp = TempDir::new().unwrap();
+        let backend = make_backend(&tmp);
+        let src = make_path(&backend, "/original.txt");
+        let dst = make_path(&backend, "/copied.txt");
+
+        backend.write_file(&src, Bytes::from("original content"), &WriteOptions::default()).await.unwrap();
+
+        // Copy
+        let entry = backend.copy(&src, &dst, &CopyOptions::default()).await.unwrap();
+        assert!(entry.is_file());
+        assert_eq!(entry.name(), Some("copied.txt"));
+
+        // Verify content
+        let mut stream = backend.read_file(&dst, &ReadOptions::default()).await.unwrap();
+        let mut content = Vec::new();
+        while let Some(chunk) = stream.next().await {
+            content.extend_from_slice(&chunk.unwrap());
+        }
+        assert_eq!(content, b"original content");
+    }
+
+    #[tokio::test]
+    async fn test_rename_file() {
+        let tmp = TempDir::new().unwrap();
+        let backend = make_backend(&tmp);
+        let src = make_path(&backend, "/old_name.txt");
+        let dst = make_path(&backend, "/new_name.txt");
+
+        backend.write_file(&src, Bytes::from("content"), &WriteOptions::default()).await.unwrap();
+
+        // Rename
+        let entry = backend.rename(&src, &dst, &MoveOptions::default()).await.unwrap();
+        assert!(entry.is_file());
+        assert_eq!(entry.name(), Some("new_name.txt"));
+
+        // Old path should not exist
+        let result = backend.get_metadata(&src).await;
+        assert!(matches!(result, Err(CfkError::NotFound(_))));
+    }
+
+    #[tokio::test]
+    async fn test_read_file_range() {
+        let tmp = TempDir::new().unwrap();
+        let backend = make_backend(&tmp);
+        let path = make_path(&backend, "/ranged.txt");
+
+        backend.write_file(&path, Bytes::from("0123456789"), &WriteOptions::default()).await.unwrap();
+
+        // Read range 3-7 (bytes 3, 4, 5, 6)
+        let options = ReadOptions { range: Some((3, 7)), ..Default::default() };
+        let mut stream = backend.read_file(&path, &options).await.unwrap();
+        let mut content = Vec::new();
+        while let Some(chunk) = stream.next().await {
+            content.extend_from_slice(&chunk.unwrap());
+        }
+        assert_eq!(content, b"3456");
+    }
+
+    #[tokio::test]
+    async fn test_get_metadata() {
+        let tmp = TempDir::new().unwrap();
+        let backend = make_backend(&tmp);
+        let path = make_path(&backend, "/meta_test.txt");
+
+        let content = "Test content for metadata";
+        backend.write_file(&path, Bytes::from(content), &WriteOptions::default()).await.unwrap();
+
+        let entry = backend.get_metadata(&path).await.unwrap();
+        assert!(entry.is_file());
+        assert_eq!(entry.size(), Some(content.len() as u64));
+        assert!(entry.metadata.modified.is_some());
+    }
+}

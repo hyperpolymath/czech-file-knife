@@ -7,7 +7,6 @@ members = [
     "cfk-search",
     "cfk-vfs",
     "cfk-cli",
-    "cfk-ios",
     "cfk-integrations",
 ]
 
@@ -56,7 +55,7 @@ directories = "5.0"
 
 # Search
 fuzzy-matcher = "0.3"
-tantivy = "0.21"
+tantivy = "0.22"
 glob = "0.3"
 regex = "1.10"
 walkdir = "2.4"

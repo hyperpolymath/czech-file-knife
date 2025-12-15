@@ -7,9 +7,11 @@
 //! - Unix sockets: Local IPC
 //! - Named pipes: Windows IPC
 
+#![allow(dead_code)] // Placeholder structs for future implementation
+
 use cfk_core::{CfkError, CfkResult};
 use std::net::SocketAddr;
-use tokio::net::{TcpStream, UdpSocket};
+use tokio::net::TcpStream;
 
 /// Transport type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

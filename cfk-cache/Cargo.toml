@@ -6,7 +6,7 @@ license.workspace = true
 description = "Offline caching layer for Czech File Knife"
 
 [features]
-default = ["sled"]
+default = []
 sled = ["dep:sled"]
 surrealdb = ["dep:surrealdb"]
 redb = ["dep:redb"]
