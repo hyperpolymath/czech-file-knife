@@ -1,4 +1,5 @@
 # Build outputs
+target/
 *.o
 *.a
 *.so
