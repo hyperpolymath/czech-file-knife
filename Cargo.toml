@@ -63,7 +63,7 @@ ignore = "0.4"
 infer = "0.15"
 
 # FUSE
-fuser = "0.14"
+fuser = "0.16"
 parking_lot = "0.12"
 dashmap = "5.5"
 
