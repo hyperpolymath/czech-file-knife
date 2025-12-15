@@ -102,3 +102,46 @@ impl CfkError {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_retryable() {
+        assert!(CfkError::Network("connection reset".into()).is_retryable());
+        assert!(CfkError::RateLimited { retry_after_secs: Some(30) }.is_retryable());
+        assert!(CfkError::Timeout.is_retryable());
+        assert!(CfkError::TokenExpired.is_retryable());
+
+        assert!(!CfkError::NotFound("file.txt".into()).is_retryable());
+        assert!(!CfkError::PermissionDenied("/root".into()).is_retryable());
+        assert!(!CfkError::Cancelled.is_retryable());
+    }
+
+    #[test]
+    fn test_is_auth_error() {
+        assert!(CfkError::AuthRequired("login needed".into()).is_auth_error());
+        assert!(CfkError::AuthFailed("bad password".into()).is_auth_error());
+        assert!(CfkError::TokenExpired.is_auth_error());
+
+        assert!(!CfkError::Network("timeout".into()).is_auth_error());
+        assert!(!CfkError::NotFound("file.txt".into()).is_auth_error());
+    }
+
+    #[test]
+    fn test_error_display() {
+        let err = CfkError::NotFound("/path/to/file".into());
+        assert_eq!(format!("{}", err), "Path not found: /path/to/file");
+
+        let err = CfkError::RateLimited { retry_after_secs: Some(60) };
+        assert!(format!("{}", err).contains("60"));
+    }
+
+    #[test]
+    fn test_from_io_error() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
+        let cfk_err: CfkError = io_err.into();
+        assert!(matches!(cfk_err, CfkError::Io(_)));
+    }
+}

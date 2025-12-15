@@ -2,7 +2,6 @@
 //!
 //! Supports: Linux, macOS, Windows, iOS, Android, Minix, z/OS, RISC-V
 
-use crate::error::CfkResult;
 
 /// Platform capabilities
 #[derive(Debug, Clone)]

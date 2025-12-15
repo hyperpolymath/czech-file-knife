@@ -14,8 +14,7 @@
 //! - AFP: Apple Filing
 //! - DLNA/UPnP: Media discovery
 
-use cfk_core::{CfkError, CfkResult, VirtualPath};
-use async_trait::async_trait;
+use cfk_core::{CfkError, CfkResult};
 
 /// Protocol capabilities
 #[derive(Debug, Clone, Default)]

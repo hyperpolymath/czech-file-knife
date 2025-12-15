@@ -97,3 +97,138 @@ impl fmt::Display for VirtualPath {
         write!(f, "{}", self.to_uri())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new() {
+        let path = VirtualPath::new("local", "/home/user/docs");
+        assert_eq!(path.backend, "local");
+        assert_eq!(path.segments, vec!["home", "user", "docs"]);
+    }
+
+    #[test]
+    fn test_new_handles_empty_segments() {
+        let path = VirtualPath::new("local", "//home//user//");
+        assert_eq!(path.segments, vec!["home", "user"]);
+    }
+
+    #[test]
+    fn test_root() {
+        let path = VirtualPath::root("dropbox");
+        assert_eq!(path.backend, "dropbox");
+        assert!(path.segments.is_empty());
+        assert!(path.is_root());
+    }
+
+    #[test]
+    fn test_join() {
+        let root = VirtualPath::root("local");
+        let path = root.join("home").join("user");
+        assert_eq!(path.segments, vec!["home", "user"]);
+    }
+
+    #[test]
+    fn test_join_with_dotdot() {
+        let path = VirtualPath::new("local", "/home/user/docs");
+        let new_path = path.join("../pictures");
+        assert_eq!(new_path.segments, vec!["home", "user", "pictures"]);
+    }
+
+    #[test]
+    fn test_join_with_dot() {
+        let path = VirtualPath::new("local", "/home/user");
+        let new_path = path.join("./docs");
+        assert_eq!(new_path.segments, vec!["home", "user", "docs"]);
+    }
+
+    #[test]
+    fn test_parent() {
+        let path = VirtualPath::new("local", "/home/user/docs");
+        let parent = path.parent().unwrap();
+        assert_eq!(parent.segments, vec!["home", "user"]);
+    }
+
+    #[test]
+    fn test_parent_of_root() {
+        let root = VirtualPath::root("local");
+        assert!(root.parent().is_none());
+    }
+
+    #[test]
+    fn test_name() {
+        let path = VirtualPath::new("local", "/home/user/file.txt");
+        assert_eq!(path.name(), Some("file.txt"));
+    }
+
+    #[test]
+    fn test_name_of_root() {
+        let root = VirtualPath::root("local");
+        assert!(root.name().is_none());
+    }
+
+    #[test]
+    fn test_extension() {
+        let path = VirtualPath::new("local", "/home/user/file.txt");
+        assert_eq!(path.extension(), Some("txt"));
+
+        let path_no_ext = VirtualPath::new("local", "/home/user/file");
+        assert!(path_no_ext.extension().is_none());
+
+        let path_multi = VirtualPath::new("local", "/archive.tar.gz");
+        assert_eq!(path_multi.extension(), Some("gz"));
+    }
+
+    #[test]
+    fn test_to_path_string() {
+        let root = VirtualPath::root("local");
+        assert_eq!(root.to_path_string(), "/");
+
+        let path = VirtualPath::new("local", "/home/user");
+        assert_eq!(path.to_path_string(), "/home/user");
+    }
+
+    #[test]
+    fn test_to_uri() {
+        let path = VirtualPath::new("dropbox", "/Documents/file.txt");
+        assert_eq!(path.to_uri(), "cfk://dropbox/Documents/file.txt");
+
+        let root = VirtualPath::root("gdrive");
+        assert_eq!(root.to_uri(), "cfk://gdrive/");
+    }
+
+    #[test]
+    fn test_parse_uri() {
+        let path = VirtualPath::parse_uri("cfk://local/home/user").unwrap();
+        assert_eq!(path.backend, "local");
+        assert_eq!(path.segments, vec!["home", "user"]);
+    }
+
+    #[test]
+    fn test_parse_uri_root() {
+        let path = VirtualPath::parse_uri("cfk://dropbox").unwrap();
+        assert_eq!(path.backend, "dropbox");
+        assert!(path.segments.is_empty());
+    }
+
+    #[test]
+    fn test_parse_uri_invalid() {
+        assert!(VirtualPath::parse_uri("http://example.com").is_none());
+        assert!(VirtualPath::parse_uri("/local/path").is_none());
+    }
+
+    #[test]
+    fn test_display() {
+        let path = VirtualPath::new("s3", "/bucket/key");
+        assert_eq!(format!("{}", path), "cfk://s3/bucket/key");
+    }
+
+    #[test]
+    fn test_equality() {
+        let path1 = VirtualPath::new("local", "/home/user");
+        let path2 = VirtualPath::new("local", "home/user");
+        assert_eq!(path1, path2);
+    }
+}
