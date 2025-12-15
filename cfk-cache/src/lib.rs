@@ -1,5 +1,11 @@
 //! Offline caching layer for Czech File Knife
 //!
+//! Features:
+//! - Content-addressed blob storage with BLAKE3 hashing
+//! - LZ4 compression for efficient storage
+//! - Metadata caching with TTL support
+//! - Multiple eviction policies (LRU, LFU, FIFO, etc.)
+//!
 //! Supports multiple backends:
 //! - sled: Pure Rust embedded KV (default)
 //! - SurrealDB: Multi-model with graph queries
@@ -12,6 +18,43 @@
 use async_trait::async_trait;
 use cfk_core::{CfkResult, VirtualPath, Entry};
 use bytes::Bytes;
+use thiserror::Error;
+
+pub mod blob_store;
+pub mod metadata_cache;
+pub mod policy;
+
+pub use blob_store::{BlobStore, BlobStoreConfig, ContentId};
+pub use metadata_cache::{MetadataCache, MetadataCacheConfig, CachedEntry};
+pub use policy::{CachePolicy, PolicyConfig, EvictionPolicy};
+
+/// Cache-specific errors
+#[derive(Debug, Error)]
+pub enum CacheError {
+    #[error("I/O error: {0}")]
+    Io(String),
+
+    #[error("Database error: {0}")]
+    Database(String),
+
+    #[error("Serialization error: {0}")]
+    Serialization(String),
+
+    #[error("Content not found: {0}")]
+    NotFound(String),
+
+    #[error("Invalid content ID")]
+    InvalidContentId,
+
+    #[error("Corrupted content: {0}")]
+    CorruptedContent(String),
+
+    #[error("Cache full")]
+    CacheFull,
+}
+
+/// Cache result type
+pub type CacheResult<T> = Result<T, CacheError>;
 
 /// Cache trait for different backends
 #[async_trait]
