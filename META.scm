@@ -35,7 +35,7 @@
 
 (define development-practices
   '((code-style
-     (languages . ("Ada" "Just" "Nickel" "Rust" "Scheme" "Shell"))
+     (languages . ("Ada" "C" "Dockerfile" "Just" "Nickel" "Rust" "Scheme" "Shell" "Swift"))
      (formatter . "gnatpp")
      (linter . "gnatcheck")
      (line-length . 100)
