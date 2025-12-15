@@ -47,7 +47,53 @@ pub mod smb;
 #[cfg(feature = "syncthing")]
 pub mod syncthing;
 
+#[cfg(feature = "ceph")]
+pub mod ceph;
+
 pub use local::LocalBackend;
+
+// Re-export provider types when features are enabled
+#[cfg(feature = "dropbox")]
+pub use dropbox::{DropboxBackend, DropboxConfig, DropboxTokens};
+
+#[cfg(feature = "gdrive")]
+pub use gdrive::{GoogleDriveBackend, GoogleDriveConfig, GoogleTokens};
+
+#[cfg(feature = "onedrive")]
+pub use onedrive::{OneDriveBackend, OneDriveConfig, OneDriveTokens};
+
+#[cfg(feature = "box")]
+pub use box_com::{BoxBackend, BoxConfig, BoxTokens};
+
+#[cfg(feature = "s3")]
+pub use s3::{S3Backend, S3Config};
+
+#[cfg(feature = "ipfs")]
+pub use ipfs::{IpfsBackend, IpfsConfig};
+
+#[cfg(feature = "webdav")]
+pub use webdav::{WebDavBackend, WebDavConfig, WebDavAuth};
+
+#[cfg(feature = "afs")]
+pub use afs::{AfsBackend, AfsConfig};
+
+#[cfg(feature = "ninep")]
+pub use ninep::{NinePBackend, NinePConfig};
+
+#[cfg(feature = "sftp")]
+pub use sftp::{SftpBackend, SftpConfig, SftpAuth};
+
+#[cfg(feature = "nfs")]
+pub use nfs::{NfsBackend, NfsConfig, NfsVersion};
+
+#[cfg(feature = "smb")]
+pub use smb::{SmbBackend, SmbConfig, SmbVersion, SmbAuth};
+
+#[cfg(feature = "syncthing")]
+pub use syncthing::{SyncthingBackend, SyncthingConfig};
+
+#[cfg(feature = "ceph")]
+pub use ceph::{CephBackend, CephConfig, CephMode};
 
 use cfk_core::{StorageBackend, CfkResult, CfkError};
 use std::collections::HashMap;
