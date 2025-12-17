@@ -7,10 +7,19 @@ title: "czech-file-knife"
 message: "If you use this software, please cite it as below."
 type: software
 authors:
-  - family-names: "Polymath"
-    given-names: "Hyper"
+  - family-names: "Jewell"
+    given-names: "Jonathan D.A."
+    alias: "hyperpolymath"
     email: "hyperpolymath@proton.me"
     affiliation: "Rhodium Standard / Independent Researcher"
+# Inspiration (no code derived)
+references:
+  - type: software
+    title: "Swiss File Knife"
+    authors:
+      - name: "StahlWorks Technologies"
+    url: "https://stahlworks.com/swiss-file-knife"
+    notes: "Name and concept inspiration - no code derived from this project"
 repository-code: "https://github.com/hyperpolymath/czech-file-knife"
 url: "https://rhodium.sh/projects/czech-file-knife"
 abstract: "RSR-compliant project"
