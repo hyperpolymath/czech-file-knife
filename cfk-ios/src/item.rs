@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! File Provider Item representation
 //!
 //! Maps to NSFileProviderItem in iOS.
@@ -67,6 +68,7 @@ pub enum ItemType {
     Directory = 1,
     Symlink = 2,
     Package = 3,  // macOS/iOS package (folder displayed as file)
+    Unknown = 255,
 }
 
 impl From<EntryKind> for ItemType {
@@ -75,12 +77,12 @@ impl From<EntryKind> for ItemType {
             EntryKind::File => ItemType::File,
             EntryKind::Directory => ItemType::Directory,
             EntryKind::Symlink => ItemType::Symlink,
+            EntryKind::Unknown => ItemType::Unknown,
         }
     }
 }
 
 /// Item capabilities (what operations are allowed)
-#[repr(u64)]
 #[derive(Debug, Clone, Copy)]
 pub struct ItemCapabilities(pub u64);
 
@@ -188,7 +190,7 @@ impl FileProviderItem {
             .segments
             .last()
             .cloned()
-            .unwrap_or_else(|| entry.path.backend_id.clone());
+            .unwrap_or_else(|| entry.path.backend.clone());
 
         let item_type: ItemType = entry.kind.into();
         let capabilities = match entry.kind {
@@ -227,8 +229,8 @@ impl FileProviderItem {
             is_uploading: false,
             download_progress: 0.0,
             upload_progress: 1.0,
-            version_identifier: entry.metadata.checksum.clone(),
-            checksum: entry.metadata.checksum.clone(),
+            version_identifier: entry.metadata.content_hash.clone(),
+            checksum: entry.metadata.content_hash.clone(),
             is_favorite: false,
             tag_data: None,
             user_info: entry.metadata.custom.clone(),

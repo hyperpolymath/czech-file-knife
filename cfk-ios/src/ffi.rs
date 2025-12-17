@@ -3,7 +3,7 @@
 //! This module exposes a C API that can be called from Swift/Objective-C.
 
 use crate::domain::{DomainIdentifier, FileDomain};
-use crate::error::{CfkError, FileProviderErrorCode};
+use crate::error::{FfiError, FileProviderErrorCode};
 use crate::item::{FileProviderItem, ItemIdentifier};
 use crate::provider::FileProviderManager;
 use once_cell::sync::OnceCell;
@@ -16,10 +16,10 @@ use std::sync::Arc;
 static MANAGER: OnceCell<Arc<FileProviderManager>> = OnceCell::new();
 
 /// Initialize the FFI layer
-fn get_manager() -> Result<&'static Arc<FileProviderManager>, CfkError> {
+fn get_manager() -> Result<&'static Arc<FileProviderManager>, FfiError> {
     MANAGER
         .get()
-        .ok_or_else(|| CfkError::from_error(&crate::error::IosError::Ffi(
+        .ok_or_else(|| FfiError::from_error(&crate::error::IosError::Ffi(
             "Manager not initialized".into(),
         )))
 }

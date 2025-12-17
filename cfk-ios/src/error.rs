@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! iOS-specific error types
 
-use cfk_core::CfkError;
+use cfk_core::CfkError as CoreError;
 use std::ffi::CString;
 use thiserror::Error;
 
@@ -8,7 +9,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum IosError {
     #[error("Core error: {0}")]
-    Core(#[from] CfkError),
+    Core(#[from] CoreError),
 
     #[error("Invalid identifier: {0}")]
     InvalidIdentifier(String),
@@ -92,14 +93,14 @@ impl From<&IosError> for FileProviderErrorCode {
 
 /// FFI-safe error structure
 #[repr(C)]
-pub struct CfkError {
+pub struct FfiError {
     /// Error code
     pub code: i32,
     /// Error message (null-terminated, caller must free)
     pub message: *mut libc::c_char,
 }
 
-impl CfkError {
+impl FfiError {
     /// Create a success result
     pub fn success() -> Self {
         Self {
@@ -127,7 +128,7 @@ impl CfkError {
 /// # Safety
 /// The pointer must have been returned by a CFK function.
 #[no_mangle]
-pub unsafe extern "C" fn cfk_error_free(error: *mut CfkError) {
+pub unsafe extern "C" fn cfk_error_free(error: *mut FfiError) {
     if !error.is_null() {
         let err = &mut *error;
         if !err.message.is_null() {

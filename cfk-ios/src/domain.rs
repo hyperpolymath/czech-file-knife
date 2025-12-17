@@ -104,7 +104,7 @@ impl DomainManager {
         if path.exists() {
             let data = tokio::fs::read_to_string(&path)
                 .await
-                .map_err(|e| IosError::Core(cfk_core::CfkError::Io(e.to_string())))?;
+                .map_err(|e| IosError::Core(cfk_core::CfkError::Io(e)))?;
 
             let domains: Vec<FileDomain> = serde_json::from_str(&data)
                 .map_err(|e| IosError::Ffi(format!("Failed to parse domains: {}", e)))?;
@@ -125,12 +125,12 @@ impl DomainManager {
 
         tokio::fs::create_dir_all(&self.storage_path)
             .await
-            .map_err(|e| IosError::Core(cfk_core::CfkError::Io(e.to_string())))?;
+            .map_err(|e| IosError::Core(cfk_core::CfkError::Io(e)))?;
 
         let path = self.storage_path.join("domains.json");
         tokio::fs::write(&path, data)
             .await
-            .map_err(|e| IosError::Core(cfk_core::CfkError::Io(e.to_string())))?;
+            .map_err(|e| IosError::Core(cfk_core::CfkError::Io(e)))?;
 
         Ok(())
     }
