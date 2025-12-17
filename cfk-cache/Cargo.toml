@@ -6,7 +6,7 @@ license.workspace = true
 description = "Offline caching layer for Czech File Knife"
 
 [features]
-default = []
+default = ["sled"]
 sled = ["dep:sled"]
 surrealdb = ["dep:surrealdb"]
 redb = ["dep:redb"]
@@ -26,6 +26,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+hex = "0.4"
 
 # Database backends (choose one)
 sled = { version = "0.34", optional = true }

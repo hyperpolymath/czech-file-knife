@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Cache eviction policies
 //!
 //! LRU, LFU, FIFO, and size-based eviction strategies.
@@ -216,10 +217,11 @@ impl CachePolicy {
             size_freed += candidate.size;
         }
 
+        let count = evicted.len();
         EvictionResult {
             evicted,
             size_freed,
-            count: evicted.len(),
+            count,
         }
     }
 

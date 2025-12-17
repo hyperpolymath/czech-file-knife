@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! File metadata caching
 //!
 //! Caches file and directory metadata for offline access and performance.
@@ -49,6 +50,7 @@ pub enum CachedEntryKind {
     File,
     Directory,
     Symlink,
+    Unknown,
 }
 
 impl From<EntryKind> for CachedEntryKind {
@@ -57,6 +59,7 @@ impl From<EntryKind> for CachedEntryKind {
             EntryKind::File => CachedEntryKind::File,
             EntryKind::Directory => CachedEntryKind::Directory,
             EntryKind::Symlink => CachedEntryKind::Symlink,
+            EntryKind::Unknown => CachedEntryKind::Unknown,
         }
     }
 }
@@ -67,6 +70,7 @@ impl From<CachedEntryKind> for EntryKind {
             CachedEntryKind::File => EntryKind::File,
             CachedEntryKind::Directory => EntryKind::Directory,
             CachedEntryKind::Symlink => EntryKind::Symlink,
+            CachedEntryKind::Unknown => EntryKind::Unknown,
         }
     }
 }
@@ -76,12 +80,12 @@ impl CachedEntry {
     pub fn from_entry(entry: &Entry, ttl_secs: Option<i64>) -> Self {
         Self {
             path: entry.path.to_string(),
-            backend_id: entry.path.backend_id.clone(),
+            backend_id: entry.path.backend.clone(),
             kind: entry.kind.into(),
             size: entry.metadata.size,
             modified: entry.metadata.modified,
             created: entry.metadata.created,
-            checksum: entry.metadata.checksum.clone(),
+            checksum: entry.metadata.content_hash.clone(),
             mime_type: entry.metadata.mime_type.clone(),
             content_id: None,
             cached_at: Utc::now(),
@@ -96,12 +100,12 @@ impl CachedEntry {
         metadata.size = self.size;
         metadata.modified = self.modified;
         metadata.created = self.created;
-        metadata.checksum = self.checksum.clone();
+        metadata.content_hash = self.checksum.clone();
         metadata.mime_type = self.mime_type.clone();
         metadata.custom = self.custom.clone();
 
         Entry {
-            path: VirtualPath::parse(&self.path).unwrap_or_else(|_| {
+            path: VirtualPath::parse_uri(&self.path).unwrap_or_else(|| {
                 VirtualPath::new(&self.backend_id, &self.path)
             }),
             kind: self.kind.into(),
@@ -145,7 +149,7 @@ impl CachedDirectory {
     pub fn new(path: &VirtualPath, children: Vec<String>, ttl_secs: Option<i64>) -> Self {
         Self {
             path: path.to_string(),
-            backend_id: path.backend_id.clone(),
+            backend_id: path.backend.clone(),
             children,
             cached_at: Utc::now(),
             expires_at: ttl_secs.map(|secs| Utc::now() + chrono::Duration::seconds(secs)),
@@ -326,7 +330,7 @@ impl MetadataCache {
             // Fetch individual entries
             let mut entries = Vec::new();
             for child_path in &cached.children {
-                let virtual_path = VirtualPath::parse(child_path).unwrap_or_else(|_| {
+                let virtual_path = VirtualPath::parse_uri(child_path).unwrap_or_else(|| {
                     VirtualPath::new(&cached.backend_id, child_path)
                 });
 
