@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2025 hyperpolymath
 
-FROM rust:1.83-slim-bookworm AS builder
+FROM rust:1.85-slim-bookworm AS builder
 
 WORKDIR /build
 
