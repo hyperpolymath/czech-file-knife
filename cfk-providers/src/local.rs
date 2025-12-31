@@ -232,8 +232,39 @@ impl StorageBackend for LocalBackend {
     }
 
     async fn get_space_info(&self) -> CfkResult<SpaceInfo> {
-        // Platform-specific disk space detection would go here
-        Ok(SpaceInfo::unknown())
+        #[cfg(unix)]
+        {
+            use std::ffi::CString;
+            use std::mem::MaybeUninit;
+
+            let path_cstr = CString::new(self.root.to_string_lossy().as_bytes())
+                .map_err(|_| CfkError::InvalidPath(self.root.display().to_string()))?;
+
+            let mut stat: MaybeUninit<libc::statvfs> = MaybeUninit::uninit();
+            let result = unsafe { libc::statvfs(path_cstr.as_ptr(), stat.as_mut_ptr()) };
+
+            if result == 0 {
+                let stat = unsafe { stat.assume_init() };
+                let block_size = stat.f_frsize as u64;
+                let total = stat.f_blocks as u64 * block_size;
+                let available = stat.f_bavail as u64 * block_size;
+                let free = stat.f_bfree as u64 * block_size;
+                let used = total - free;
+
+                Ok(SpaceInfo {
+                    total: Some(total),
+                    used: Some(used),
+                    available: Some(available),
+                })
+            } else {
+                Ok(SpaceInfo::unknown())
+            }
+        }
+
+        #[cfg(not(unix))]
+        {
+            Ok(SpaceInfo::unknown())
+        }
     }
 }
 
