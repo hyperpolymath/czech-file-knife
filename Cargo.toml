@@ -53,7 +53,7 @@ bytesize = "2.3"
 
 # Storage
 sled = "0.34"
-directories = "5.0"
+directories = "6.0"
 
 # Search
 fuzzy-matcher = "0.3"
