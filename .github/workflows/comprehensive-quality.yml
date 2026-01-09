@@ -211,5 +211,6 @@ jobs:
           echo "Documentation:$DOCS"
       - name: Check code comments
         run: |
-          COMMENTS=$(grep -rE "^[[:space:]]*(//|#|/\*)" --include="*.rs" --include="*.res" --include="*.py" . 2>/dev/null | wc -l || echo "0")
+          # Check allowed languages per RSR (Rust, ReScript, Julia, Gleam)
+          COMMENTS=$(grep -rE "^[[:space:]]*(//|#|/\*)" --include="*.rs" --include="*.res" --include="*.jl" --include="*.gleam" . 2>/dev/null | wc -l || echo "0")
           echo "Comment lines: $COMMENTS"
