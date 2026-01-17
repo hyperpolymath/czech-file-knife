@@ -17,7 +17,11 @@ edition = "2021"
 rust-version = "1.75"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/hyperpolymath/czech-file-knife"
+homepage = "https://github.com/hyperpolymath/czech-file-knife"
+documentation = "https://docs.rs/cfk-core"
 authors = ["hyperpolymath"]
+keywords = ["file-manager", "cloud-storage", "fuse", "sync"]
+categories = ["command-line-utilities", "filesystem"]
 
 [workspace.dependencies]
 # Async runtime
@@ -32,7 +36,7 @@ toml = "0.8"
 
 # HTTP & Auth
 reqwest = { version = "0.12", features = ["json", "stream"] }
-oauth2 = "4.4"
+oauth2 = "5.0"
 
 # Hashing & Compression
 blake3 = "1.5"
