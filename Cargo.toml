@@ -35,7 +35,7 @@ serde_json = "1.0"
 toml = "0.8"
 
 # HTTP & Auth
-reqwest = { version = "0.12", features = ["json", "stream"] }
+reqwest = { version = "0.13", features = ["json", "stream"] }
 oauth2 = "5.0"
 
 # Hashing & Compression
