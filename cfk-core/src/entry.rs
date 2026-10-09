@@ -22,11 +22,19 @@ pub struct Entry {
 
 impl Entry {
     pub fn file(path: VirtualPath, metadata: Metadata) -> Self {
-        Self { path, kind: EntryKind::File, metadata }
+        Self {
+            path,
+            kind: EntryKind::File,
+            metadata,
+        }
     }
 
     pub fn directory(path: VirtualPath, metadata: Metadata) -> Self {
-        Self { path, kind: EntryKind::Directory, metadata }
+        Self {
+            path,
+            kind: EntryKind::Directory,
+            metadata,
+        }
     }
 
     pub fn is_file(&self) -> bool {
@@ -57,7 +65,12 @@ pub struct DirectoryListing {
 
 impl DirectoryListing {
     pub fn new(path: VirtualPath, entries: Vec<Entry>) -> Self {
-        Self { path, entries, cursor: None, has_more: false }
+        Self {
+            path,
+            entries,
+            cursor: None,
+            has_more: false,
+        }
     }
 }
 

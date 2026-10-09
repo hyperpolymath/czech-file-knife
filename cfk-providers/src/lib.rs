@@ -72,7 +72,7 @@ pub use s3::{S3Backend, S3Config};
 pub use ipfs::{IpfsBackend, IpfsConfig};
 
 #[cfg(feature = "webdav")]
-pub use webdav::{WebDavBackend, WebDavConfig, WebDavAuth};
+pub use webdav::{WebDavAuth, WebDavBackend, WebDavConfig};
 
 #[cfg(feature = "afs")]
 pub use afs::{AfsBackend, AfsConfig};
@@ -81,13 +81,13 @@ pub use afs::{AfsBackend, AfsConfig};
 pub use ninep::{NinePBackend, NinePConfig};
 
 #[cfg(feature = "sftp")]
-pub use sftp::{SftpBackend, SftpConfig, SftpAuth};
+pub use sftp::{SftpAuth, SftpBackend, SftpConfig};
 
 #[cfg(feature = "nfs")]
 pub use nfs::{NfsBackend, NfsConfig, NfsVersion};
 
 #[cfg(feature = "smb")]
-pub use smb::{SmbBackend, SmbConfig, SmbVersion, SmbAuth};
+pub use smb::{SmbAuth, SmbBackend, SmbConfig, SmbVersion};
 
 #[cfg(feature = "syncthing")]
 pub use syncthing::{SyncthingBackend, SyncthingConfig};
@@ -95,7 +95,7 @@ pub use syncthing::{SyncthingBackend, SyncthingConfig};
 #[cfg(feature = "ceph")]
 pub use ceph::{CephBackend, CephConfig, CephMode};
 
-use cfk_core::{StorageBackend, CfkResult, CfkError};
+use cfk_core::{CfkError, CfkResult, StorageBackend};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -106,7 +106,9 @@ pub struct BackendRegistry {
 
 impl BackendRegistry {
     pub fn new() -> Self {
-        Self { backends: HashMap::new() }
+        Self {
+            backends: HashMap::new(),
+        }
     }
 
     pub fn register(&mut self, backend: Arc<dyn StorageBackend>) {
@@ -118,7 +120,8 @@ impl BackendRegistry {
     }
 
     pub fn get_or_err(&self, id: &str) -> CfkResult<Arc<dyn StorageBackend>> {
-        self.get(id).ok_or_else(|| CfkError::BackendNotFound(id.to_string()))
+        self.get(id)
+            .ok_or_else(|| CfkError::BackendNotFound(id.to_string()))
     }
 
     pub fn list(&self) -> Vec<&str> {

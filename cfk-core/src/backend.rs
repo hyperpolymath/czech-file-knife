@@ -2,8 +2,8 @@
 
 use async_trait::async_trait;
 use bytes::Bytes;
-use std::pin::Pin;
 use futures::Stream;
+use std::pin::Pin;
 
 use crate::{
     entry::{DirectoryListing, Entry},
@@ -36,22 +36,42 @@ pub struct StorageCapabilities {
 impl StorageCapabilities {
     pub fn full() -> Self {
         Self {
-            read: true, write: true, delete: true, rename: true,
-            copy: true, list: true, search: true, versioning: true,
-            sharing: true, offline: true, streaming: true,
-            resumable_uploads: true, content_hashing: true,
+            read: true,
+            write: true,
+            delete: true,
+            rename: true,
+            copy: true,
+            list: true,
+            search: true,
+            versioning: true,
+            sharing: true,
+            offline: true,
+            streaming: true,
+            resumable_uploads: true,
+            content_hashing: true,
         }
     }
 
     pub fn read_only() -> Self {
-        Self { read: true, list: true, ..Default::default() }
+        Self {
+            read: true,
+            list: true,
+            ..Default::default()
+        }
     }
 
     pub fn local_filesystem() -> Self {
         Self {
-            read: true, write: true, delete: true, rename: true,
-            copy: true, list: true, search: true, offline: true,
-            streaming: true, content_hashing: true,
+            read: true,
+            write: true,
+            delete: true,
+            rename: true,
+            copy: true,
+            list: true,
+            search: true,
+            offline: true,
+            streaming: true,
+            content_hashing: true,
             ..Default::default()
         }
     }
@@ -98,14 +118,39 @@ pub trait StorageBackend: Send + Sync {
 
     async fn is_available(&self) -> bool;
     async fn get_metadata(&self, path: &VirtualPath) -> CfkResult<Entry>;
-    async fn list_directory(&self, path: &VirtualPath, options: &ListOptions) -> CfkResult<DirectoryListing>;
+    async fn list_directory(
+        &self,
+        path: &VirtualPath,
+        options: &ListOptions,
+    ) -> CfkResult<DirectoryListing>;
     async fn read_file(&self, path: &VirtualPath, options: &ReadOptions) -> CfkResult<ByteStream>;
-    async fn write_file(&self, path: &VirtualPath, data: Bytes, options: &WriteOptions) -> CfkResult<Entry>;
-    async fn write_file_stream(&self, path: &VirtualPath, stream: ByteStream, size_hint: Option<u64>, options: &WriteOptions) -> CfkResult<Entry>;
+    async fn write_file(
+        &self,
+        path: &VirtualPath,
+        data: Bytes,
+        options: &WriteOptions,
+    ) -> CfkResult<Entry>;
+    async fn write_file_stream(
+        &self,
+        path: &VirtualPath,
+        stream: ByteStream,
+        size_hint: Option<u64>,
+        options: &WriteOptions,
+    ) -> CfkResult<Entry>;
     async fn create_directory(&self, path: &VirtualPath) -> CfkResult<Entry>;
     async fn delete(&self, path: &VirtualPath, options: &DeleteOptions) -> CfkResult<()>;
-    async fn copy(&self, source: &VirtualPath, dest: &VirtualPath, options: &CopyOptions) -> CfkResult<Entry>;
-    async fn rename(&self, source: &VirtualPath, dest: &VirtualPath, options: &MoveOptions) -> CfkResult<Entry>;
+    async fn copy(
+        &self,
+        source: &VirtualPath,
+        dest: &VirtualPath,
+        options: &CopyOptions,
+    ) -> CfkResult<Entry>;
+    async fn rename(
+        &self,
+        source: &VirtualPath,
+        dest: &VirtualPath,
+        options: &MoveOptions,
+    ) -> CfkResult<Entry>;
     async fn get_space_info(&self) -> CfkResult<SpaceInfo>;
 
     // Optional methods with defaults
@@ -114,10 +159,14 @@ pub trait StorageBackend: Send + Sync {
     }
 
     async fn get_versions(&self, _path: &VirtualPath) -> CfkResult<Vec<FileVersion>> {
-        Err(crate::CfkError::Unsupported("Versioning not supported".into()))
+        Err(crate::CfkError::Unsupported(
+            "Versioning not supported".into(),
+        ))
     }
 
     async fn get_version(&self, _path: &VirtualPath, _version_id: &str) -> CfkResult<ByteStream> {
-        Err(crate::CfkError::Unsupported("Versioning not supported".into()))
+        Err(crate::CfkError::Unsupported(
+            "Versioning not supported".into(),
+        ))
     }
 }

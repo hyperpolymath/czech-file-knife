@@ -180,11 +180,21 @@ impl CephBackend {
     /// Connect to Ceph cluster
     pub async fn connect(&self) -> CfkResult<()> {
         match &self.config.mode {
-            CephMode::Rados { monitors, user, key, pool } => {
+            CephMode::Rados {
+                monitors,
+                user,
+                key,
+                pool,
+            } => {
                 // Would use rados_create(), rados_conf_set(), rados_connect()
                 // rados_ioctx_create() for pool access
             }
-            CephMode::CephFs { monitors, user, key, mount_path } => {
+            CephMode::CephFs {
+                monitors,
+                user,
+                key,
+                mount_path,
+            } => {
                 // Would use ceph_mount(), ceph_conf_set(), etc.
             }
             CephMode::Rgw { .. } => {

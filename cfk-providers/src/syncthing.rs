@@ -169,10 +169,7 @@ impl SyncthingBackend {
     /// Trigger rescan of a folder
     pub async fn rescan_folder(&self, folder_id: &str) -> CfkResult<()> {
         let config = self.config.read().await;
-        let url = format!(
-            "{}/rest/db/scan?folder={}",
-            config.api_url, folder_id
-        );
+        let url = format!("{}/rest/db/scan?folder={}", config.api_url, folder_id);
 
         let response = self
             .http
@@ -289,8 +286,7 @@ impl StorageBackend for SyncthingBackend {
                 .map(|f| {
                     let mut metadata = Metadata::default();
                     // Use label as display name in custom metadata
-                    metadata.custom
-                        .insert("label".to_string(), f.label.clone());
+                    metadata.custom.insert("label".to_string(), f.label.clone());
                     metadata
                         .custom
                         .insert("type".to_string(), f.folder_type.clone());

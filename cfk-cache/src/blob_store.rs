@@ -28,8 +28,7 @@ impl ContentId {
         }
 
         let mut bytes = [0u8; 32];
-        hex::decode_to_slice(hex, &mut bytes)
-            .map_err(|_| CacheError::InvalidContentId)?;
+        hex::decode_to_slice(hex, &mut bytes).map_err(|_| CacheError::InvalidContentId)?;
 
         Ok(Self(bytes))
     }
@@ -327,10 +326,7 @@ pub struct BlobWriter {
 impl BlobWriter {
     /// Create a new blob writer
     pub async fn new(store: &BlobStore) -> CacheResult<Self> {
-        let temp_path = store
-            .config
-            .path
-            .join(format!("upload_{}", uuid_simple()));
+        let temp_path = store.config.path.join(format!("upload_{}", uuid_simple()));
 
         let file = fs::File::create(&temp_path)
             .await
@@ -360,7 +356,7 @@ impl BlobWriter {
 
     /// Finish writing and return content ID
     pub async fn finish(mut self, store: &BlobStore) -> CacheResult<ContentId> {
-        if let Some(mut file) = self.file.take() {
+        if let Some(file) = self.file.take() {
             file.sync_all()
                 .await
                 .map_err(|e| CacheError::Io(e.to_string()))?;

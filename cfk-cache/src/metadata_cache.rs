@@ -96,18 +96,19 @@ impl CachedEntry {
 
     /// Convert back to cfk_core Entry
     pub fn to_entry(&self) -> Entry {
-        let mut metadata = Metadata::default();
-        metadata.size = self.size;
-        metadata.modified = self.modified;
-        metadata.created = self.created;
-        metadata.content_hash = self.checksum.clone();
-        metadata.mime_type = self.mime_type.clone();
-        metadata.custom = self.custom.clone();
+        let metadata = Metadata {
+            size: self.size,
+            modified: self.modified,
+            created: self.created,
+            content_hash: self.checksum.clone(),
+            mime_type: self.mime_type.clone(),
+            custom: self.custom.clone(),
+            ..Default::default()
+        };
 
         Entry {
-            path: VirtualPath::parse_uri(&self.path).unwrap_or_else(|| {
-                VirtualPath::new(&self.backend_id, &self.path)
-            }),
+            path: VirtualPath::parse_uri(&self.path)
+                .unwrap_or_else(|| VirtualPath::new(&self.backend_id, &self.path)),
             kind: self.kind.into(),
             metadata,
         }
@@ -202,8 +203,7 @@ pub struct MetadataCache {
 impl MetadataCache {
     /// Create new metadata cache
     pub fn new(config: MetadataCacheConfig) -> CacheResult<Self> {
-        let db = sled::open(&config.db_path)
-            .map_err(|e| CacheError::Database(e.to_string()))?;
+        let db = sled::open(&config.db_path).map_err(|e| CacheError::Database(e.to_string()))?;
 
         let memory_cache = Arc::new(RwLock::new(lru::LruCache::new(
             std::num::NonZeroUsize::new(10000).unwrap(),
@@ -225,8 +225,8 @@ impl MetadataCache {
     pub async fn put_entry(&self, entry: &Entry) -> CacheResult<()> {
         let cached = CachedEntry::from_entry(entry, Some(self.config.default_ttl));
         let key = entry.path.to_string();
-        let value = serde_json::to_vec(&cached)
-            .map_err(|e| CacheError::Serialization(e.to_string()))?;
+        let value =
+            serde_json::to_vec(&cached).map_err(|e| CacheError::Serialization(e.to_string()))?;
 
         self.db
             .insert(format!("entry:{}", key), value)
@@ -242,8 +242,8 @@ impl MetadataCache {
     pub async fn put_entry_with_ttl(&self, entry: &Entry, ttl_secs: i64) -> CacheResult<()> {
         let cached = CachedEntry::from_entry(entry, Some(ttl_secs));
         let key = entry.path.to_string();
-        let value = serde_json::to_vec(&cached)
-            .map_err(|e| CacheError::Serialization(e.to_string()))?;
+        let value =
+            serde_json::to_vec(&cached).map_err(|e| CacheError::Serialization(e.to_string()))?;
 
         self.db
             .insert(format!("entry:{}", key), value)
@@ -270,7 +270,11 @@ impl MetadataCache {
 
         // Check database
         let db_key = format!("entry:{}", key);
-        if let Some(data) = self.db.get(&db_key).map_err(|e| CacheError::Database(e.to_string()))? {
+        if let Some(data) = self
+            .db
+            .get(&db_key)
+            .map_err(|e| CacheError::Database(e.to_string()))?
+        {
             let cached: CachedEntry = serde_json::from_slice(&data)
                 .map_err(|e| CacheError::Serialization(e.to_string()))?;
 
@@ -297,8 +301,8 @@ impl MetadataCache {
         let cached = CachedDirectory::new(path, children, Some(self.config.default_ttl));
 
         let key = format!("dir:{}", path);
-        let value = serde_json::to_vec(&cached)
-            .map_err(|e| CacheError::Serialization(e.to_string()))?;
+        let value =
+            serde_json::to_vec(&cached).map_err(|e| CacheError::Serialization(e.to_string()))?;
 
         self.db
             .insert(key, value)
@@ -316,7 +320,11 @@ impl MetadataCache {
     pub async fn get_directory(&self, path: &VirtualPath) -> CacheResult<Option<Vec<Entry>>> {
         let key = format!("dir:{}", path);
 
-        if let Some(data) = self.db.get(&key).map_err(|e| CacheError::Database(e.to_string()))? {
+        if let Some(data) = self
+            .db
+            .get(&key)
+            .map_err(|e| CacheError::Database(e.to_string()))?
+        {
             let cached: CachedDirectory = serde_json::from_slice(&data)
                 .map_err(|e| CacheError::Serialization(e.to_string()))?;
 
@@ -330,9 +338,8 @@ impl MetadataCache {
             // Fetch individual entries
             let mut entries = Vec::new();
             for child_path in &cached.children {
-                let virtual_path = VirtualPath::parse_uri(child_path).unwrap_or_else(|| {
-                    VirtualPath::new(&cached.backend_id, child_path)
-                });
+                let virtual_path = VirtualPath::parse_uri(child_path)
+                    .unwrap_or_else(|| VirtualPath::new(&cached.backend_id, child_path));
 
                 if let Some(entry) = self.get_entry(&virtual_path).await? {
                     entries.push(entry.to_entry());
@@ -363,12 +370,10 @@ impl MetadataCache {
         let prefix = format!("entry:{}:", path);
 
         // Remove all entries with this prefix
-        for result in self.db.scan_prefix(&prefix) {
-            if let Ok((key, _)) = result {
-                self.db
-                    .remove(&key)
-                    .map_err(|e| CacheError::Database(e.to_string()))?;
-            }
+        for (key, _) in self.db.scan_prefix(&prefix).flatten() {
+            self.db
+                .remove(&key)
+                .map_err(|e| CacheError::Database(e.to_string()))?;
         }
 
         // Remove directory listing
@@ -383,21 +388,17 @@ impl MetadataCache {
     pub async fn clear_backend(&self, backend_id: &str) -> CacheResult<()> {
         let prefix = format!("entry:{}:", backend_id);
 
-        for result in self.db.scan_prefix(&prefix) {
-            if let Ok((key, _)) = result {
-                self.db
-                    .remove(&key)
-                    .map_err(|e| CacheError::Database(e.to_string()))?;
-            }
+        for (key, _) in self.db.scan_prefix(&prefix).flatten() {
+            self.db
+                .remove(&key)
+                .map_err(|e| CacheError::Database(e.to_string()))?;
         }
 
         let dir_prefix = format!("dir:{}:", backend_id);
-        for result in self.db.scan_prefix(&dir_prefix) {
-            if let Ok((key, _)) = result {
-                self.db
-                    .remove(&key)
-                    .map_err(|e| CacheError::Database(e.to_string()))?;
-            }
+        for (key, _) in self.db.scan_prefix(&dir_prefix).flatten() {
+            self.db
+                .remove(&key)
+                .map_err(|e| CacheError::Database(e.to_string()))?;
         }
 
         self.memory_cache.write().await.clear();
@@ -407,7 +408,9 @@ impl MetadataCache {
 
     /// Clear all cached data
     pub async fn clear_all(&self) -> CacheResult<()> {
-        self.db.clear().map_err(|e| CacheError::Database(e.to_string()))?;
+        self.db
+            .clear()
+            .map_err(|e| CacheError::Database(e.to_string()))?;
         self.memory_cache.write().await.clear();
         Ok(())
     }
@@ -431,28 +434,24 @@ impl MetadataCache {
     pub async fn prune_expired(&self) -> CacheResult<usize> {
         let mut pruned = 0;
 
-        for result in self.db.scan_prefix("entry:") {
-            if let Ok((key, value)) = result {
-                if let Ok(cached) = serde_json::from_slice::<CachedEntry>(&value) {
-                    if cached.is_expired() {
-                        self.db
-                            .remove(&key)
-                            .map_err(|e| CacheError::Database(e.to_string()))?;
-                        pruned += 1;
-                    }
+        for (key, value) in self.db.scan_prefix("entry:").flatten() {
+            if let Ok(cached) = serde_json::from_slice::<CachedEntry>(&value) {
+                if cached.is_expired() {
+                    self.db
+                        .remove(&key)
+                        .map_err(|e| CacheError::Database(e.to_string()))?;
+                    pruned += 1;
                 }
             }
         }
 
-        for result in self.db.scan_prefix("dir:") {
-            if let Ok((key, value)) = result {
-                if let Ok(cached) = serde_json::from_slice::<CachedDirectory>(&value) {
-                    if cached.is_expired() {
-                        self.db
-                            .remove(&key)
-                            .map_err(|e| CacheError::Database(e.to_string()))?;
-                        pruned += 1;
-                    }
+        for (key, value) in self.db.scan_prefix("dir:").flatten() {
+            if let Ok(cached) = serde_json::from_slice::<CachedDirectory>(&value) {
+                if cached.is_expired() {
+                    self.db
+                        .remove(&key)
+                        .map_err(|e| CacheError::Database(e.to_string()))?;
+                    pruned += 1;
                 }
             }
         }

@@ -66,7 +66,9 @@ impl VirtualPath {
     }
 
     pub fn extension(&self) -> Option<&str> {
-        self.name().and_then(|n| n.rsplit_once('.')).map(|(_, ext)| ext)
+        self.name()
+            .and_then(|n| n.rsplit_once('.'))
+            .map(|(_, ext)| ext)
     }
 
     pub fn is_root(&self) -> bool {

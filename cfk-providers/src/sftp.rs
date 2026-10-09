@@ -184,7 +184,10 @@ impl SftpBackend {
         }
 
         // Private key
-        if let SftpAuth::PrivateKey { private_key_path, .. } = &self.config.auth {
+        if let SftpAuth::PrivateKey {
+            private_key_path, ..
+        } = &self.config.auth
+        {
             opts.push("-oIdentityFile".to_string());
             opts.push(private_key_path.display().to_string());
         }
@@ -248,7 +251,10 @@ impl SftpBackend {
             args.push(format!("-oUserKnownHostsFile={}", kh.display()));
         }
 
-        if let SftpAuth::PrivateKey { private_key_path, .. } = &self.config.auth {
+        if let SftpAuth::PrivateKey {
+            private_key_path, ..
+        } = &self.config.auth
+        {
             args.push("-i".to_string());
             args.push(private_key_path.display().to_string());
         }
@@ -334,17 +340,22 @@ impl StorageBackend for SftpBackend {
             metadata.permissions = Some(Permissions::new(mode));
         }
 
-        Ok(Entry { path: path.clone(), kind, metadata })
+        Ok(Entry {
+            path: path.clone(),
+            kind,
+            metadata,
+        })
     }
 
-    async fn list_directory(&self, path: &VirtualPath, _options: &ListOptions) -> CfkResult<DirectoryListing> {
+    async fn list_directory(
+        &self,
+        path: &VirtualPath,
+        _options: &ListOptions,
+    ) -> CfkResult<DirectoryListing> {
         let remote_path = self.to_remote_path(path);
 
         // Use ssh + ls to get a reliable directory listing
-        let cmd = format!(
-            "ls -1a '{}'",
-            remote_path.replace('\'', "'\\''")
-        );
+        let cmd = format!("ls -1a '{}'", remote_path.replace('\'', "'\\''"));
         let output = self.run_ssh_command(&cmd)?;
 
         let mut entries = Vec::new();
@@ -412,7 +423,11 @@ impl StorageBackend for SftpBackend {
                     }
 
                     let entry_path = path.join(name);
-                    entries.push(Entry { path: entry_path, kind, metadata });
+                    entries.push(Entry {
+                        path: entry_path,
+                        kind,
+                        metadata,
+                    });
                 }
             }
         }
@@ -431,24 +446,27 @@ impl StorageBackend for SftpBackend {
         let batch = format!("get {} {}\n", remote_path, tmp_path_str);
         self.run_sftp_batch(&batch)?;
 
-        let data = std::fs::read(&tmp_file).map_err(|e| {
-            CfkError::Other(format!("Failed to read downloaded file: {}", e))
-        })?;
+        let data = std::fs::read(&tmp_file)
+            .map_err(|e| CfkError::Other(format!("Failed to read downloaded file: {}", e)))?;
         let _ = std::fs::remove_file(&tmp_file);
 
         let bytes = Bytes::from(data);
         Ok(Box::pin(futures::stream::once(async { Ok(bytes) })))
     }
 
-    async fn write_file(&self, path: &VirtualPath, data: Bytes, _options: &WriteOptions) -> CfkResult<Entry> {
+    async fn write_file(
+        &self,
+        path: &VirtualPath,
+        data: Bytes,
+        _options: &WriteOptions,
+    ) -> CfkResult<Entry> {
         let remote_path = self.to_remote_path(path);
 
         // Write to a temp file, then upload via sftp
         let tmp_dir = std::env::temp_dir();
         let tmp_file = tmp_dir.join(format!("cfk_sftp_put_{}", std::process::id()));
-        std::fs::write(&tmp_file, &data).map_err(|e| {
-            CfkError::Other(format!("Failed to write temp file: {}", e))
-        })?;
+        std::fs::write(&tmp_file, &data)
+            .map_err(|e| CfkError::Other(format!("Failed to write temp file: {}", e)))?;
 
         let tmp_path_str = tmp_file.display().to_string();
         let batch = format!("put {} {}\n", tmp_path_str, remote_path);
@@ -465,7 +483,13 @@ impl StorageBackend for SftpBackend {
         })
     }
 
-    async fn write_file_stream(&self, path: &VirtualPath, mut stream: ByteStream, _size_hint: Option<u64>, options: &WriteOptions) -> CfkResult<Entry> {
+    async fn write_file_stream(
+        &self,
+        path: &VirtualPath,
+        mut stream: ByteStream,
+        _size_hint: Option<u64>,
+        options: &WriteOptions,
+    ) -> CfkResult<Entry> {
         use futures::StreamExt;
 
         let mut data = Vec::new();
@@ -502,14 +526,24 @@ impl StorageBackend for SftpBackend {
         })
     }
 
-    async fn copy(&self, _from: &VirtualPath, _to: &VirtualPath, _options: &CopyOptions) -> CfkResult<Entry> {
+    async fn copy(
+        &self,
+        _from: &VirtualPath,
+        _to: &VirtualPath,
+        _options: &CopyOptions,
+    ) -> CfkResult<Entry> {
         // SFTP doesn't support server-side copy
         Err(CfkError::Unsupported(
             "SFTP doesn't support native copy".into(),
         ))
     }
 
-    async fn rename(&self, from: &VirtualPath, to: &VirtualPath, _options: &MoveOptions) -> CfkResult<Entry> {
+    async fn rename(
+        &self,
+        from: &VirtualPath,
+        to: &VirtualPath,
+        _options: &MoveOptions,
+    ) -> CfkResult<Entry> {
         let from_path = self.to_remote_path(from);
         let to_path = self.to_remote_path(to);
 
@@ -530,7 +564,11 @@ impl StorageBackend for SftpBackend {
                 let total = parts[1].parse::<u64>().ok();
                 let used = parts[2].parse::<u64>().ok();
                 let available = parts[3].parse::<u64>().ok();
-                return Ok(SpaceInfo { total, used, available });
+                return Ok(SpaceInfo {
+                    total,
+                    used,
+                    available,
+                });
             }
         }
 

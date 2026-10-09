@@ -127,33 +127,33 @@ async fn main() -> ExitCode {
     let cli = Cli::parse();
 
     let result = match cli.command {
-        Commands::Ls { path, long, all, human } => {
-            commands::ls(&path, long, all, human, cli.verbose).await
-        }
-        Commands::Cat { path } => {
-            commands::cat(&path, cli.verbose).await
-        }
-        Commands::Cp { source, dest, recursive, force } => {
-            commands::cp(&source, &dest, recursive, force, cli.verbose).await
-        }
-        Commands::Mv { source, dest, force } => {
-            commands::mv(&source, &dest, force, cli.verbose).await
-        }
-        Commands::Rm { paths, recursive, force } => {
-            commands::rm(&paths, recursive, force, cli.verbose).await
-        }
-        Commands::Mkdir { paths, parents } => {
-            commands::mkdir(&paths, parents, cli.verbose).await
-        }
-        Commands::Stat { path } => {
-            commands::stat(&path, cli.verbose).await
-        }
-        Commands::Backends => {
-            commands::backends(cli.verbose).await
-        }
-        Commands::Df { backend } => {
-            commands::df(&backend, cli.verbose).await
-        }
+        Commands::Ls {
+            path,
+            long,
+            all,
+            human,
+        } => commands::ls(&path, long, all, human, cli.verbose).await,
+        Commands::Cat { path } => commands::cat(&path, cli.verbose).await,
+        Commands::Cp {
+            source,
+            dest,
+            recursive,
+            force,
+        } => commands::cp(&source, &dest, recursive, force, cli.verbose).await,
+        Commands::Mv {
+            source,
+            dest,
+            force,
+        } => commands::mv(&source, &dest, force, cli.verbose).await,
+        Commands::Rm {
+            paths,
+            recursive,
+            force,
+        } => commands::rm(&paths, recursive, force, cli.verbose).await,
+        Commands::Mkdir { paths, parents } => commands::mkdir(&paths, parents, cli.verbose).await,
+        Commands::Stat { path } => commands::stat(&path, cli.verbose).await,
+        Commands::Backends => commands::backends(cli.verbose).await,
+        Commands::Df { backend } => commands::df(&backend, cli.verbose).await,
     };
 
     match result {

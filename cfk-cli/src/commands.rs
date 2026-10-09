@@ -40,14 +40,12 @@ fn parse_path(path: &str) -> CfkResult<VirtualPath> {
     let path_buf = if path.starts_with('/') {
         PathBuf::from(path)
     } else {
-        let cwd = std::env::current_dir().map_err(|e| CfkError::Io(e))?;
+        let cwd = std::env::current_dir().map_err(CfkError::Io)?;
         cwd.join(path)
     };
 
     // Canonicalize if exists, otherwise use as-is
-    let canonical = path_buf
-        .canonicalize()
-        .unwrap_or_else(|_| path_buf.clone());
+    let canonical = path_buf.canonicalize().unwrap_or_else(|_| path_buf.clone());
 
     Ok(VirtualPath::new("local", canonical.to_string_lossy()))
 }
@@ -191,7 +189,13 @@ pub async fn cat(path: &str, verbose: bool) -> CfkResult<()> {
 }
 
 /// Copy files
-pub async fn cp(source: &str, dest: &str, _recursive: bool, force: bool, verbose: bool) -> CfkResult<()> {
+pub async fn cp(
+    source: &str,
+    dest: &str,
+    _recursive: bool,
+    force: bool,
+    verbose: bool,
+) -> CfkResult<()> {
     let registry = init_registry();
     let src_path = parse_path(source)?;
     let dst_path = parse_path(dest)?;
@@ -335,7 +339,11 @@ pub async fn stat(path: &str, verbose: bool) -> CfkResult<()> {
     }
 
     if let Some(perms) = entry.metadata.permissions {
-        println!("  Mode: {:o} ({})", perms.mode, format_permissions(Some(perms.mode)));
+        println!(
+            "  Mode: {:o} ({})",
+            perms.mode,
+            format_permissions(Some(perms.mode))
+        );
     }
 
     if let Some(modified) = entry.metadata.modified {

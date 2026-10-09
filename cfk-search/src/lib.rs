@@ -144,7 +144,11 @@ impl InvertedIndex {
     }
 
     /// Compute a simple TF-IDF-like score for a document against query tokens.
-    fn score_document(doc: &IndexedDocument, query_tokens: &[String], search_contents: bool) -> f32 {
+    fn score_document(
+        doc: &IndexedDocument,
+        query_tokens: &[String],
+        search_contents: bool,
+    ) -> f32 {
         if query_tokens.is_empty() {
             return 0.0;
         }
@@ -154,14 +158,22 @@ impl InvertedIndex {
 
         for qt in query_tokens {
             // Name matches are weighted higher (x3)
-            let name_hits = doc.name_tokens.iter().filter(|t| t.contains(qt.as_str())).count() as u32;
+            let name_hits = doc
+                .name_tokens
+                .iter()
+                .filter(|t| t.contains(qt.as_str()))
+                .count() as u32;
             if name_hits > 0 {
                 matched += 1;
                 total_matches += name_hits * 3;
             }
 
             if search_contents {
-                let content_hits = doc.content_tokens.iter().filter(|t| t.contains(qt.as_str())).count() as u32;
+                let content_hits = doc
+                    .content_tokens
+                    .iter()
+                    .filter(|t| t.contains(qt.as_str()))
+                    .count() as u32;
                 if content_hits > 0 {
                     matched += 1;
                     total_matches += content_hits;
@@ -186,8 +198,16 @@ impl InvertedIndex {
             let start = pos.saturating_sub(context_chars);
             let end = (pos + query_token.len() + context_chars).min(text.len());
             // Find character boundaries
-            let start = text[..start].char_indices().last().map(|(i, _)| i).unwrap_or(0);
-            let end = text[end..].char_indices().next().map(|(i, _)| end + i).unwrap_or(text.len());
+            let start = text[..start]
+                .char_indices()
+                .last()
+                .map(|(i, _)| i)
+                .unwrap_or(0);
+            let end = text[end..]
+                .char_indices()
+                .next()
+                .map(|(i, _)| end + i)
+                .unwrap_or(text.len());
             let mut snippet = String::new();
             if start > 0 {
                 snippet.push_str("...");
@@ -236,15 +256,28 @@ impl SearchIndex for InvertedIndex {
         };
 
         // Insert into documents list
-        let mut docs = self.documents.write().map_err(|_| CfkError::Other("Lock poisoned".into()))?;
-        let mut path_map = self.path_map.write().map_err(|_| CfkError::Other("Lock poisoned".into()))?;
-        let mut token_idx = self.token_index.write().map_err(|_| CfkError::Other("Lock poisoned".into()))?;
+        let mut docs = self
+            .documents
+            .write()
+            .map_err(|_| CfkError::Other("Lock poisoned".into()))?;
+        let mut path_map = self
+            .path_map
+            .write()
+            .map_err(|_| CfkError::Other("Lock poisoned".into()))?;
+        let mut token_idx = self
+            .token_index
+            .write()
+            .map_err(|_| CfkError::Other("Lock poisoned".into()))?;
 
         // If already indexed, remove old entry first
         if let Some(&old_idx) = path_map.get(&path_key) {
             // Remove old token references (expensive but correct)
             let old_doc = &docs[old_idx];
-            for token in old_doc.name_tokens.iter().chain(old_doc.content_tokens.iter()) {
+            for token in old_doc
+                .name_tokens
+                .iter()
+                .chain(old_doc.content_tokens.iter())
+            {
                 if let Some(indices) = token_idx.get_mut(token) {
                     indices.retain(|&i| i != old_idx);
                 }
@@ -272,9 +305,18 @@ impl SearchIndex for InvertedIndex {
     async fn remove(&self, path: &VirtualPath) -> CfkResult<()> {
         let path_key = path.to_uri();
 
-        let mut path_map = self.path_map.write().map_err(|_| CfkError::Other("Lock poisoned".into()))?;
-        let docs = self.documents.read().map_err(|_| CfkError::Other("Lock poisoned".into()))?;
-        let mut token_idx = self.token_index.write().map_err(|_| CfkError::Other("Lock poisoned".into()))?;
+        let mut path_map = self
+            .path_map
+            .write()
+            .map_err(|_| CfkError::Other("Lock poisoned".into()))?;
+        let docs = self
+            .documents
+            .read()
+            .map_err(|_| CfkError::Other("Lock poisoned".into()))?;
+        let mut token_idx = self
+            .token_index
+            .write()
+            .map_err(|_| CfkError::Other("Lock poisoned".into()))?;
 
         if let Some(&idx) = path_map.get(&path_key) {
             // Remove token references
@@ -296,8 +338,14 @@ impl SearchIndex for InvertedIndex {
             return Ok(Vec::new());
         }
 
-        let docs = self.documents.read().map_err(|_| CfkError::Other("Lock poisoned".into()))?;
-        let token_idx = self.token_index.read().map_err(|_| CfkError::Other("Lock poisoned".into()))?;
+        let docs = self
+            .documents
+            .read()
+            .map_err(|_| CfkError::Other("Lock poisoned".into()))?;
+        let token_idx = self
+            .token_index
+            .read()
+            .map_err(|_| CfkError::Other("Lock poisoned".into()))?;
 
         // Collect candidate document indices from the inverted index
         let mut candidate_set = std::collections::HashSet::new();
@@ -313,7 +361,8 @@ impl SearchIndex for InvertedIndex {
         }
 
         // Score and filter candidates
-        let mut results: Vec<SearchResult> = candidate_set.into_iter()
+        let mut results: Vec<SearchResult> = candidate_set
+            .into_iter()
             .filter_map(|idx| {
                 let doc = docs.get(idx)?;
 
@@ -327,19 +376,21 @@ impl SearchIndex for InvertedIndex {
                 // Path prefix filter
                 if let Some(ref paths) = query.paths {
                     let doc_path = doc.entry.path.to_path_string();
-                    if !paths.iter().any(|p| doc_path.starts_with(&p.to_path_string())) {
+                    if !paths
+                        .iter()
+                        .any(|p| doc_path.starts_with(&p.to_path_string()))
+                    {
                         return None;
                     }
                 }
 
                 // File type filter
                 if let Some(ref file_types) = query.file_types {
-                    if let Some(ext) = doc.entry.path.extension() {
+                    {
+                        let ext = doc.entry.path.extension()?;
                         if !file_types.iter().any(|ft| ft.eq_ignore_ascii_case(ext)) {
                             return None;
                         }
-                    } else {
-                        return None;
                     }
                 }
 
@@ -366,7 +417,11 @@ impl SearchIndex for InvertedIndex {
             .collect();
 
         // Sort by score descending
-        results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+        results.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Apply offset and limit
         let offset = query.offset.unwrap_or(0);
@@ -377,9 +432,18 @@ impl SearchIndex for InvertedIndex {
     }
 
     async fn clear(&self) -> CfkResult<()> {
-        let mut docs = self.documents.write().map_err(|_| CfkError::Other("Lock poisoned".into()))?;
-        let mut token_idx = self.token_index.write().map_err(|_| CfkError::Other("Lock poisoned".into()))?;
-        let mut path_map = self.path_map.write().map_err(|_| CfkError::Other("Lock poisoned".into()))?;
+        let mut docs = self
+            .documents
+            .write()
+            .map_err(|_| CfkError::Other("Lock poisoned".into()))?;
+        let mut token_idx = self
+            .token_index
+            .write()
+            .map_err(|_| CfkError::Other("Lock poisoned".into()))?;
+        let mut path_map = self
+            .path_map
+            .write()
+            .map_err(|_| CfkError::Other("Lock poisoned".into()))?;
 
         docs.clear();
         token_idx.clear();
@@ -389,8 +453,14 @@ impl SearchIndex for InvertedIndex {
     }
 
     async fn stats(&self) -> CfkResult<IndexStats> {
-        let docs = self.documents.read().map_err(|_| CfkError::Other("Lock poisoned".into()))?;
-        let token_idx = self.token_index.read().map_err(|_| CfkError::Other("Lock poisoned".into()))?;
+        let docs = self
+            .documents
+            .read()
+            .map_err(|_| CfkError::Other("Lock poisoned".into()))?;
+        let token_idx = self
+            .token_index
+            .read()
+            .map_err(|_| CfkError::Other("Lock poisoned".into()))?;
 
         // Approximate size: count of tokens * average key size + posting list sizes
         let token_count: usize = token_idx.values().map(|v| v.len()).sum();
@@ -433,31 +503,38 @@ impl TantivyIndex {
 #[async_trait]
 impl SearchIndex for TantivyIndex {
     async fn index(&self, _entry: &Entry, _content: Option<&[u8]>) -> CfkResult<()> {
-        Err(CfkError::Unsupported("Tantivy indexing not yet implemented".into()))
+        Err(CfkError::Unsupported(
+            "Tantivy indexing not yet implemented".into(),
+        ))
     }
 
     async fn remove(&self, _path: &VirtualPath) -> CfkResult<()> {
-        Err(CfkError::Unsupported("Tantivy indexing not yet implemented".into()))
+        Err(CfkError::Unsupported(
+            "Tantivy indexing not yet implemented".into(),
+        ))
     }
 
     async fn search(&self, _query: &SearchQuery) -> CfkResult<Vec<SearchResult>> {
-        Err(CfkError::Unsupported("Tantivy search not yet implemented".into()))
+        Err(CfkError::Unsupported(
+            "Tantivy search not yet implemented".into(),
+        ))
     }
 
     async fn clear(&self) -> CfkResult<()> {
-        Err(CfkError::Unsupported("Tantivy indexing not yet implemented".into()))
+        Err(CfkError::Unsupported(
+            "Tantivy indexing not yet implemented".into(),
+        ))
     }
 
     async fn stats(&self) -> CfkResult<IndexStats> {
-        Err(CfkError::Unsupported("Tantivy indexing not yet implemented".into()))
+        Err(CfkError::Unsupported(
+            "Tantivy indexing not yet implemented".into(),
+        ))
     }
 }
 
 /// Simple filename-based search (works without full-text index)
-pub async fn search_by_name(
-    pattern: &str,
-    entries: impl IntoIterator<Item = Entry>,
-) -> Vec<Entry> {
+pub async fn search_by_name(pattern: &str, entries: impl IntoIterator<Item = Entry>) -> Vec<Entry> {
     let pattern_lower = pattern.to_lowercase();
     entries
         .into_iter()
@@ -492,7 +569,7 @@ pub fn matches_glob(pattern: &str, name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cfk_core::{EntryKind, metadata::Metadata};
+    use cfk_core::{metadata::Metadata, EntryKind};
 
     #[test]
     fn test_matches_glob() {
@@ -521,9 +598,21 @@ mod tests {
         let entry2 = make_entry("local", "/docs/license.md");
         let entry3 = make_entry("local", "/src/main.rs");
 
-        index.index(&entry1, Some(b"This is the readme file with important documentation")).await.unwrap();
-        index.index(&entry2, Some(b"MIT License - free software")).await.unwrap();
-        index.index(&entry3, Some(b"fn main() { println!(\"hello\"); }")).await.unwrap();
+        index
+            .index(
+                &entry1,
+                Some(b"This is the readme file with important documentation"),
+            )
+            .await
+            .unwrap();
+        index
+            .index(&entry2, Some(b"MIT License - free software"))
+            .await
+            .unwrap();
+        index
+            .index(&entry3, Some(b"fn main() { println!(\"hello\"); }"))
+            .await
+            .unwrap();
 
         // Search by filename
         let query = SearchQuery {
@@ -562,7 +651,10 @@ mod tests {
         let index = InvertedIndex::new();
 
         let entry = make_entry("local", "/removeme.txt");
-        index.index(&entry, Some(b"temporary content")).await.unwrap();
+        index
+            .index(&entry, Some(b"temporary content"))
+            .await
+            .unwrap();
 
         let query = SearchQuery {
             query: "removeme".to_string(),
@@ -622,7 +714,10 @@ mod tests {
 
         for i in 0..10 {
             let entry = make_entry("local", &format!("/file_{}.txt", i));
-            index.index(&entry, Some(format!("common content {}", i).as_bytes())).await.unwrap();
+            index
+                .index(&entry, Some(format!("common content {}", i).as_bytes()))
+                .await
+                .unwrap();
         }
 
         let query = SearchQuery {

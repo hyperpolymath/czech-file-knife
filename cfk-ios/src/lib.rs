@@ -40,7 +40,6 @@ pub use item::{FileProviderItem, ItemIdentifier};
 pub use provider::FileProviderManager;
 
 use once_cell::sync::OnceCell;
-use std::sync::Arc;
 use tokio::runtime::Runtime;
 
 /// Global Tokio runtime for async operations

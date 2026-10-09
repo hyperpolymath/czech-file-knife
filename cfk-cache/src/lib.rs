@@ -14,11 +14,10 @@
 //! - DragonflyDB: Redis-compatible (via redis crate)
 
 #![allow(dead_code)] // Placeholder structs for future implementation
-
 #![forbid(unsafe_code)]
 use async_trait::async_trait;
-use cfk_core::{CfkResult, VirtualPath, Entry};
 use bytes::Bytes;
+use cfk_core::{CfkResult, Entry, VirtualPath};
 use thiserror::Error;
 
 pub mod blob_store;
@@ -26,8 +25,8 @@ pub mod metadata_cache;
 pub mod policy;
 
 pub use blob_store::{BlobStore, BlobStoreConfig, ContentId};
-pub use metadata_cache::{MetadataCache, MetadataCacheConfig, CachedEntry};
-pub use policy::{CachePolicy, PolicyConfig, EvictionPolicy};
+pub use metadata_cache::{CachedEntry, MetadataCache, MetadataCacheConfig};
+pub use policy::{CachePolicy, EvictionPolicy, PolicyConfig};
 
 /// Cache-specific errors
 #[derive(Debug, Error)]
@@ -94,7 +93,11 @@ pub struct CacheStats {
 impl CacheStats {
     pub fn hit_rate(&self) -> f64 {
         let total = self.hit_count + self.miss_count;
-        if total == 0 { 0.0 } else { self.hit_count as f64 / total as f64 }
+        if total == 0 {
+            0.0
+        } else {
+            self.hit_count as f64 / total as f64
+        }
     }
 }
 
@@ -118,8 +121,7 @@ pub mod blob {
 
     /// Decompress LZ4 data
     pub fn decompress(data: &[u8]) -> CfkResult<Vec<u8>> {
-        decompress_size_prepended(data)
-            .map_err(|e| cfk_core::CfkError::Cache(e.to_string()))
+        decompress_size_prepended(data).map_err(|e| cfk_core::CfkError::Cache(e.to_string()))
     }
 }
 
@@ -130,7 +132,7 @@ pub mod eviction {
     pub struct LruPolicy {
         max_size: u64,
         max_entries: usize,
-        entries: VecDeque<(String, u64)>,  // (hash, size)
+        entries: VecDeque<(String, u64)>, // (hash, size)
     }
 
     impl LruPolicy {
@@ -168,11 +170,15 @@ pub mod eviction {
 #[cfg(feature = "sled")]
 pub mod sled_backend;
 
+// The `surrealdb`, `lmdb` and `dragonfly` features are declared but have no
+// backend yet: `surreal_backend.rs`, `lmdb_backend.rs` and
+// `dragonfly_backend.rs` were never written. Fail loudly rather than with a
+// missing-module error (and rustfmt resolves every `mod`, cfg or not).
 #[cfg(feature = "surrealdb")]
-pub mod surreal_backend;
+compile_error!("cfk-cache: the `surrealdb` feature has no implementation yet");
 
 #[cfg(feature = "lmdb")]
-pub mod lmdb_backend;
+compile_error!("cfk-cache: the `lmdb` feature has no implementation yet");
 
 #[cfg(feature = "dragonfly")]
-pub mod dragonfly_backend;
+compile_error!("cfk-cache: the `dragonfly` feature has no implementation yet");

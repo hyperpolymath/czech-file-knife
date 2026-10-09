@@ -4,8 +4,8 @@
 //! LRU, LFU, FIFO, and size-based eviction strategies.
 
 use chrono::{DateTime, Utc};
-use std::collections::{BinaryHeap, HashMap};
 use std::cmp::Ordering;
+use std::collections::HashMap;
 
 use crate::blob_store::ContentId;
 
@@ -46,9 +46,10 @@ impl CacheEntryInfo {
 }
 
 /// Eviction policy type
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum EvictionPolicy {
     /// Least Recently Used
+    #[default]
     Lru,
     /// Least Frequently Used
     Lfu,
@@ -60,12 +61,6 @@ pub enum EvictionPolicy {
     SmallestFirst,
     /// Adaptive Replacement Cache (ARC-like)
     Adaptive,
-}
-
-impl Default for EvictionPolicy {
-    fn default() -> Self {
-        Self::Lru
-    }
 }
 
 /// Cache policy configuration
@@ -173,9 +168,7 @@ impl CachePolicy {
             .values()
             .filter(|e| {
                 // Don't evict entries newer than min_ttl
-                let age = Utc::now()
-                    .signed_duration_since(e.created)
-                    .num_seconds();
+                let age = Utc::now().signed_duration_since(e.created).num_seconds();
                 age >= self.config.min_ttl
             })
             .collect();
@@ -183,19 +176,19 @@ impl CachePolicy {
         // Sort by policy
         match self.config.policy {
             EvictionPolicy::Lru => {
-                candidates.sort_by(|a, b| a.last_accessed.cmp(&b.last_accessed));
+                candidates.sort_by_key(|a| a.last_accessed);
             }
             EvictionPolicy::Lfu => {
-                candidates.sort_by(|a, b| a.access_count.cmp(&b.access_count));
+                candidates.sort_by_key(|a| a.access_count);
             }
             EvictionPolicy::Fifo => {
-                candidates.sort_by(|a, b| a.created.cmp(&b.created));
+                candidates.sort_by_key(|a| a.created);
             }
             EvictionPolicy::LargestFirst => {
-                candidates.sort_by(|a, b| b.size.cmp(&a.size));
+                candidates.sort_by_key(|a| std::cmp::Reverse(a.size));
             }
             EvictionPolicy::SmallestFirst => {
-                candidates.sort_by(|a, b| a.size.cmp(&b.size));
+                candidates.sort_by_key(|a| a.size);
             }
             EvictionPolicy::Adaptive => {
                 // ARC-like: balance between LRU and LFU
