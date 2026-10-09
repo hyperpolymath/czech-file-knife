@@ -299,11 +299,15 @@ pub mod gopher {
 
         let addr = format!("{}:{}", host, port);
         let mut stream = TcpStream::connect_timeout(
-            &addr.parse().map_err(|e| CfkError::Network(format!("Invalid address: {}", e)))?,
+            &addr
+                .parse()
+                .map_err(|e| CfkError::Network(format!("Invalid address: {}", e)))?,
             DEFAULT_TIMEOUT,
-        ).map_err(|e| CfkError::Network(format!("Gopher connect failed: {}", e)))?;
+        )
+        .map_err(|e| CfkError::Network(format!("Gopher connect failed: {}", e)))?;
 
-        stream.set_read_timeout(Some(DEFAULT_TIMEOUT))
+        stream
+            .set_read_timeout(Some(DEFAULT_TIMEOUT))
             .map_err(|e| CfkError::Network(format!("Set timeout failed: {}", e)))?;
 
         // Send selector + CRLF
@@ -312,7 +316,8 @@ pub mod gopher {
 
         // Read entire response
         let mut response = Vec::new();
-        stream.read_to_end(&mut response)
+        stream
+            .read_to_end(&mut response)
             .map_err(|e| CfkError::Network(format!("Gopher read failed: {}", e)))?;
 
         Ok(response)
@@ -356,7 +361,10 @@ pub mod gopher {
                     display: fields.first().unwrap_or(&"").to_string(),
                     selector: fields.get(1).unwrap_or(&"").to_string(),
                     host: fields.get(2).unwrap_or(&"").to_string(),
-                    port: fields.get(3).and_then(|p| p.trim().parse().ok()).unwrap_or(70),
+                    port: fields
+                        .get(3)
+                        .and_then(|p| p.trim().parse().ok())
+                        .unwrap_or(70),
                 });
                 continue;
             }
@@ -432,18 +440,23 @@ pub mod gemini {
         let parsed = url::Url::parse(&url_str)
             .map_err(|e| CfkError::InvalidPath(format!("Invalid Gemini URL: {}", e)))?;
 
-        let host = parsed.host_str()
+        let host = parsed
+            .host_str()
             .ok_or_else(|| CfkError::InvalidPath("Missing host in Gemini URL".into()))?;
         let port = parsed.port().unwrap_or(1965);
         let addr = format!("{}:{}", host, port);
 
         // Connect via TCP
         let tcp_stream = TcpStream::connect_timeout(
-            &addr.parse().map_err(|e| CfkError::Network(format!("Invalid address: {}", e)))?,
+            &addr
+                .parse()
+                .map_err(|e| CfkError::Network(format!("Invalid address: {}", e)))?,
             DEFAULT_TIMEOUT,
-        ).map_err(|e| CfkError::Network(format!("Gemini TCP connect failed: {}", e)))?;
+        )
+        .map_err(|e| CfkError::Network(format!("Gemini TCP connect failed: {}", e)))?;
 
-        tcp_stream.set_read_timeout(Some(DEFAULT_TIMEOUT))
+        tcp_stream
+            .set_read_timeout(Some(DEFAULT_TIMEOUT))
             .map_err(|e| CfkError::Network(format!("Set timeout failed: {}", e)))?;
 
         // Set up TLS — Gemini uses self-signed certs commonly,
@@ -454,7 +467,8 @@ pub mod gemini {
             .build()
             .map_err(|e| CfkError::Network(format!("TLS setup failed: {}", e)))?;
 
-        let mut tls_stream = connector.connect(host, tcp_stream)
+        let mut tls_stream = connector
+            .connect(host, tcp_stream)
             .map_err(|e| CfkError::Network(format!("TLS handshake failed: {}", e)))?;
 
         // Send the URL + CRLF
@@ -464,7 +478,8 @@ pub mod gemini {
         // Read the response header (first line: "<status> <meta>\r\n")
         let mut reader = BufReader::new(&mut tls_stream);
         let mut header_line = String::new();
-        reader.read_line(&mut header_line)
+        reader
+            .read_line(&mut header_line)
             .map_err(|e| CfkError::Network(format!("Gemini header read failed: {}", e)))?;
 
         let header_line = header_line.trim_end_matches('\n').trim_end_matches('\r');
@@ -477,18 +492,16 @@ pub mod gemini {
             });
         }
 
-        let status_code: u8 = header_line[..2].parse().map_err(|_| {
-            CfkError::ProviderApi {
+        let status_code: u8 = header_line[..2]
+            .parse()
+            .map_err(|_| CfkError::ProviderApi {
                 provider: "gemini".into(),
                 message: format!("Invalid status code: {}", &header_line[..2]),
-            }
-        })?;
+            })?;
 
-        let status = Status::from_code(status_code).ok_or_else(|| {
-            CfkError::ProviderApi {
-                provider: "gemini".into(),
-                message: format!("Unknown status category: {}", status_code),
-            }
+        let status = Status::from_code(status_code).ok_or_else(|| CfkError::ProviderApi {
+            provider: "gemini".into(),
+            message: format!("Unknown status category: {}", status_code),
         })?;
 
         // Meta is everything after the status code and space
@@ -501,7 +514,8 @@ pub mod gemini {
         // Read the body (only present for 2x responses)
         let mut body = Vec::new();
         if status == Status::Success {
-            reader.read_to_end(&mut body)
+            reader
+                .read_to_end(&mut body)
                 .map_err(|e| CfkError::Network(format!("Gemini body read failed: {}", e)))?;
         }
 
@@ -544,9 +558,13 @@ pub mod nntp {
         /// Read a single response line from the server.
         fn read_line(&mut self) -> CfkResult<String> {
             let mut line = String::new();
-            self.reader.read_line(&mut line)
+            self.reader
+                .read_line(&mut line)
                 .map_err(|e| CfkError::Network(format!("NNTP read failed: {}", e)))?;
-            Ok(line.trim_end_matches('\n').trim_end_matches('\r').to_string())
+            Ok(line
+                .trim_end_matches('\n')
+                .trim_end_matches('\r')
+                .to_string())
         }
 
         /// Read a multi-line response terminated by a line containing only `.`.
@@ -640,17 +658,20 @@ pub mod nntp {
 
                 // Parse headers (case-insensitive)
                 let lower = line.to_lowercase();
-                if let Some(_) = lower.strip_prefix("message-id:") {
+                if lower.strip_prefix("message-id:").is_some() {
                     message_id = line[11..].trim().to_string();
-                } else if let Some(_) = lower.strip_prefix("subject:") {
+                } else if lower.strip_prefix("subject:").is_some() {
                     subject = line[8..].trim().to_string();
-                } else if let Some(_) = lower.strip_prefix("from:") {
+                } else if lower.strip_prefix("from:").is_some() {
                     from = line[5..].trim().to_string();
-                } else if let Some(_) = lower.strip_prefix("date:") {
+                } else if lower.strip_prefix("date:").is_some() {
                     date = line[5..].trim().to_string();
-                } else if let Some(_) = lower.strip_prefix("newsgroups:") {
+                } else if lower.strip_prefix("newsgroups:").is_some() {
                     let groups_str = line[11..].trim();
-                    newsgroups = groups_str.split(',').map(|g| g.trim().to_string()).collect();
+                    newsgroups = groups_str
+                        .split(',')
+                        .map(|g| g.trim().to_string())
+                        .collect();
                 }
             }
 
@@ -679,10 +700,9 @@ pub mod nntp {
             }
 
             let lines = self.read_multiline()?;
-            let groups: Vec<String> = lines.iter()
-                .filter_map(|line| {
-                    line.split_whitespace().next().map(String::from)
-                })
+            let groups: Vec<String> = lines
+                .iter()
+                .filter_map(|line| line.split_whitespace().next().map(String::from))
                 .collect();
 
             Ok(groups)
@@ -704,14 +724,16 @@ pub mod nntp {
             });
         }
 
-        let code: u16 = line[..3].parse().map_err(|_| {
-            CfkError::ProviderApi {
-                provider: "nntp".into(),
-                message: format!("Invalid status code: {}", &line[..3]),
-            }
+        let code: u16 = line[..3].parse().map_err(|_| CfkError::ProviderApi {
+            provider: "nntp".into(),
+            message: format!("Invalid status code: {}", &line[..3]),
         })?;
 
-        let text = if line.len() > 4 { line[4..].to_string() } else { String::new() };
+        let text = if line.len() > 4 {
+            line[4..].to_string()
+        } else {
+            String::new()
+        };
         Ok((code, text))
     }
 
@@ -723,14 +745,19 @@ pub mod nntp {
     pub async fn connect(host: &str, port: u16, _tls: bool) -> CfkResult<NntpClient> {
         let addr = format!("{}:{}", host, port);
         let stream = TcpStream::connect_timeout(
-            &addr.parse().map_err(|e| CfkError::Network(format!("Invalid address: {}", e)))?,
+            &addr
+                .parse()
+                .map_err(|e| CfkError::Network(format!("Invalid address: {}", e)))?,
             DEFAULT_TIMEOUT,
-        ).map_err(|e| CfkError::Network(format!("NNTP connect failed: {}", e)))?;
+        )
+        .map_err(|e| CfkError::Network(format!("NNTP connect failed: {}", e)))?;
 
-        stream.set_read_timeout(Some(DEFAULT_TIMEOUT))
+        stream
+            .set_read_timeout(Some(DEFAULT_TIMEOUT))
             .map_err(|e| CfkError::Network(format!("Set timeout failed: {}", e)))?;
 
-        let writer = stream.try_clone()
+        let writer = stream
+            .try_clone()
             .map_err(|e| CfkError::Network(format!("Failed to clone socket: {}", e)))?;
 
         let mut client = NntpClient {

@@ -75,17 +75,9 @@ pub async fn search(
 }
 
 /// Fuzzy file name search
-pub async fn find_files(
-    pattern: &str,
-    dir: &Path,
-    max_errors: u8,
-) -> CfkResult<Vec<String>> {
+pub async fn find_files(pattern: &str, dir: &Path, max_errors: u8) -> CfkResult<Vec<String>> {
     // Use find + agrep for fuzzy filename matching
-    let find_output = run_command("find", &[
-        dir.to_str().unwrap(),
-        "-type", "f",
-        "-print"
-    ]).await?;
+    let find_output = run_command("find", &[dir.to_str().unwrap(), "-type", "f", "-print"]).await?;
 
     let mut args = vec![format!("-{}", max_errors), pattern.to_string()];
     let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
@@ -93,7 +85,7 @@ pub async fn find_files(
     // Pipe find output to agrep (simplified - actual impl would use pipes)
     let files = String::from_utf8_lossy(&find_output.stdout)
         .lines()
-        .filter(|f| f.contains(pattern) || pattern.len() < 3)  // Simplified
+        .filter(|f| f.contains(pattern) || pattern.len() < 3) // Simplified
         .map(String::from)
         .collect();
 

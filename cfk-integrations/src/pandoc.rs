@@ -46,10 +46,7 @@ pub async fn convert(
     from: Option<Format>,
     to: Option<Format>,
 ) -> CfkResult<()> {
-    let mut args = vec![
-        input.to_str().unwrap(),
-        "-o", output.to_str().unwrap(),
-    ];
+    let mut args = vec![input.to_str().unwrap(), "-o", output.to_str().unwrap()];
 
     let from_str;
     let to_str;
@@ -66,20 +63,16 @@ pub async fn convert(
     let output = run_command("pandoc", &args).await?;
     if !output.status.success() {
         return Err(cfk_core::CfkError::Other(
-            String::from_utf8_lossy(&output.stderr).to_string()
+            String::from_utf8_lossy(&output.stderr).to_string(),
         ));
     }
     Ok(())
 }
 
 /// Convert string content between formats
-pub async fn convert_string(
-    content: &str,
-    from: Format,
-    to: Format,
-) -> CfkResult<String> {
-    use tokio::process::Command;
+pub async fn convert_string(content: &str, from: Format, to: Format) -> CfkResult<String> {
     use tokio::io::AsyncWriteExt;
+    use tokio::process::Command;
 
     let mut child = Command::new("pandoc")
         .args(["-f", from.as_str(), "-t", to.as_str()])
@@ -89,11 +82,15 @@ pub async fn convert_string(
         .map_err(|e| cfk_core::CfkError::Other(e.to_string()))?;
 
     if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(content.as_bytes()).await
+        stdin
+            .write_all(content.as_bytes())
+            .await
             .map_err(|e| cfk_core::CfkError::Other(e.to_string()))?;
     }
 
-    let output = child.wait_with_output().await
+    let output = child
+        .wait_with_output()
+        .await
         .map_err(|e| cfk_core::CfkError::Other(e.to_string()))?;
 
     Ok(String::from_utf8_lossy(&output.stdout).to_string())

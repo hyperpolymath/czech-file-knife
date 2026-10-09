@@ -4,7 +4,6 @@
 //! Maps to NSFileProviderItem in iOS.
 
 use crate::domain::DomainIdentifier;
-use crate::error::{IosError, IosResult};
 use cfk_core::{Entry, EntryKind, VirtualPath};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -67,7 +66,7 @@ pub enum ItemType {
     File = 0,
     Directory = 1,
     Symlink = 2,
-    Package = 3,  // macOS/iOS package (folder displayed as file)
+    Package = 3, // macOS/iOS package (folder displayed as file)
     Unknown = 255,
 }
 
@@ -89,11 +88,11 @@ pub struct ItemCapabilities(pub u64);
 impl ItemCapabilities {
     pub const READING: u64 = 1 << 0;
     pub const WRITING: u64 = 1 << 1;
-    pub const REPARENTING: u64 = 1 << 2;   // Can be moved
+    pub const REPARENTING: u64 = 1 << 2; // Can be moved
     pub const RENAMING: u64 = 1 << 3;
     pub const TRASHING: u64 = 1 << 4;
     pub const DELETING: u64 = 1 << 5;
-    pub const EVICTING: u64 = 1 << 6;      // Can be removed from local storage
+    pub const EVICTING: u64 = 1 << 6; // Can be removed from local storage
     pub const ADDING_SUBITEM: u64 = 1 << 7;
     pub const CONTENT_ENUMERATION: u64 = 1 << 8;
     pub const PLAYING: u64 = 1 << 9;
@@ -180,11 +179,7 @@ pub struct FileProviderItem {
 
 impl FileProviderItem {
     /// Create from cfk_core Entry
-    pub fn from_entry(
-        domain: &DomainIdentifier,
-        entry: &Entry,
-        parent: &ItemIdentifier,
-    ) -> Self {
+    pub fn from_entry(domain: &DomainIdentifier, entry: &Entry, parent: &ItemIdentifier) -> Self {
         let filename = entry
             .path
             .segments
@@ -238,7 +233,7 @@ impl FileProviderItem {
     }
 
     /// Create a root item
-    pub fn root(domain: &DomainIdentifier, display_name: &str) -> Self {
+    pub fn root(_domain: &DomainIdentifier, display_name: &str) -> Self {
         Self {
             identifier: ItemIdentifier::root(),
             parent_identifier: ItemIdentifier::root(),

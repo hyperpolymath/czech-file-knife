@@ -51,7 +51,11 @@ pub enum SmbAuth {
     /// Anonymous/Guest access
     Anonymous,
     /// NTLM authentication
-    Ntlm { username: String, password: String, domain: Option<String> },
+    Ntlm {
+        username: String,
+        password: String,
+        domain: Option<String>,
+    },
     /// Kerberos authentication
     Kerberos { principal: String },
 }
@@ -198,17 +202,18 @@ impl SmbBackend {
 
     /// Check whether the `smbclient` binary is available on the system PATH.
     fn smbclient_available() -> bool {
-        Command::new("smbclient")
-            .arg("--version")
-            .output()
-            .is_ok()
+        Command::new("smbclient").arg("--version").output().is_ok()
     }
 
     /// Build common smbclient authentication arguments from the backend configuration.
     fn auth_args(&self) -> Vec<String> {
         match &self.config.auth {
             SmbAuth::Anonymous => vec!["-N".to_string()],
-            SmbAuth::Ntlm { username, password, domain } => {
+            SmbAuth::Ntlm {
+                username,
+                password,
+                domain,
+            } => {
                 let mut args = vec![
                     "-U".to_string(),
                     if let Some(dom) = domain {
@@ -342,7 +347,10 @@ impl SmbBackend {
         //   filename (variable)  attrs(~1-6 chars)  size(~10 chars right-aligned)  date
 
         // Find the size field (a number) by scanning from the right past the date
-        let parts: Vec<&str> = trimmed.splitn(2, |c: char| c == 'D' || c == 'A' || c == 'N' || c == 'H' || c == 'S' || c == 'R')
+        let parts: Vec<&str> = trimmed
+            .splitn(2, |c: char| {
+                c == 'D' || c == 'A' || c == 'N' || c == 'H' || c == 'S' || c == 'R'
+            })
             .collect();
 
         // Simpler approach: use a regex-like manual parse
@@ -383,14 +391,24 @@ impl SmbBackend {
         let size: u64 = tokens[attr_idx + 1].parse().ok()?;
 
         let is_dir = attrs.contains('D');
-        let kind = if is_dir { EntryKind::Directory } else { EntryKind::File };
+        let kind = if is_dir {
+            EntryKind::Directory
+        } else {
+            EntryKind::File
+        };
 
         let mut metadata = Metadata::new();
         metadata.size = Some(size);
-        metadata.custom.insert("smb_attrs".to_string(), attrs.to_string());
+        metadata
+            .custom
+            .insert("smb_attrs".to_string(), attrs.to_string());
 
         let entry_path = parent_path.join(&name);
-        Some(Entry { path: entry_path, kind, metadata })
+        Some(Entry {
+            path: entry_path,
+            kind,
+            metadata,
+        })
     }
 }
 
@@ -443,10 +461,18 @@ impl StorageBackend for SmbBackend {
             }
         }
 
-        Ok(Entry { path: path.clone(), kind, metadata })
+        Ok(Entry {
+            path: path.clone(),
+            kind,
+            metadata,
+        })
     }
 
-    async fn list_directory(&self, path: &VirtualPath, _options: &ListOptions) -> CfkResult<DirectoryListing> {
+    async fn list_directory(
+        &self,
+        path: &VirtualPath,
+        _options: &ListOptions,
+    ) -> CfkResult<DirectoryListing> {
         let smb_path = self.to_smb_posix_path(path);
         let cmd = if smb_path == "/" {
             "ls".to_string()
@@ -478,24 +504,27 @@ impl StorageBackend for SmbBackend {
         self.run_smbclient_command(&cmd)?;
 
         // Read the temporary file and clean up
-        let data = std::fs::read(&tmp_file).map_err(|e| {
-            CfkError::Other(format!("Failed to read downloaded file: {}", e))
-        })?;
+        let data = std::fs::read(&tmp_file)
+            .map_err(|e| CfkError::Other(format!("Failed to read downloaded file: {}", e)))?;
         let _ = std::fs::remove_file(&tmp_file);
 
         let bytes = Bytes::from(data);
         Ok(Box::pin(futures::stream::once(async { Ok(bytes) })))
     }
 
-    async fn write_file(&self, path: &VirtualPath, data: Bytes, _options: &WriteOptions) -> CfkResult<Entry> {
+    async fn write_file(
+        &self,
+        path: &VirtualPath,
+        data: Bytes,
+        _options: &WriteOptions,
+    ) -> CfkResult<Entry> {
         let smb_path = self.to_smb_posix_path(path);
 
         // Write data to a temporary local file, then upload via smbclient
         let tmp_dir = std::env::temp_dir();
         let tmp_file = tmp_dir.join(format!("cfk_smb_put_{}", std::process::id()));
-        std::fs::write(&tmp_file, &data).map_err(|e| {
-            CfkError::Other(format!("Failed to write temp file: {}", e))
-        })?;
+        std::fs::write(&tmp_file, &data)
+            .map_err(|e| CfkError::Other(format!("Failed to write temp file: {}", e)))?;
 
         let tmp_path_str = tmp_file.display().to_string();
         let cmd = format!("put \"{}\" \"{}\"", tmp_path_str, smb_path);
@@ -513,7 +542,13 @@ impl StorageBackend for SmbBackend {
         })
     }
 
-    async fn write_file_stream(&self, path: &VirtualPath, mut stream: ByteStream, _size_hint: Option<u64>, options: &WriteOptions) -> CfkResult<Entry> {
+    async fn write_file_stream(
+        &self,
+        path: &VirtualPath,
+        mut stream: ByteStream,
+        _size_hint: Option<u64>,
+        options: &WriteOptions,
+    ) -> CfkResult<Entry> {
         use futures::StreamExt;
 
         // Collect the stream into a single buffer, then delegate to write_file
@@ -552,9 +587,16 @@ impl StorageBackend for SmbBackend {
         })
     }
 
-    async fn copy(&self, from: &VirtualPath, to: &VirtualPath, _options: &CopyOptions) -> CfkResult<Entry> {
+    async fn copy(
+        &self,
+        from: &VirtualPath,
+        to: &VirtualPath,
+        _options: &CopyOptions,
+    ) -> CfkResult<Entry> {
         if self.config.version == SmbVersion::Smb1 {
-            return Err(CfkError::Unsupported("SMB1 doesn't support server-side copy".into()));
+            return Err(CfkError::Unsupported(
+                "SMB1 doesn't support server-side copy".into(),
+            ));
         }
 
         // smbclient does not have a native server-side copy command,
@@ -579,7 +621,12 @@ impl StorageBackend for SmbBackend {
         self.get_metadata(to).await
     }
 
-    async fn rename(&self, from: &VirtualPath, to: &VirtualPath, _options: &MoveOptions) -> CfkResult<Entry> {
+    async fn rename(
+        &self,
+        from: &VirtualPath,
+        to: &VirtualPath,
+        _options: &MoveOptions,
+    ) -> CfkResult<Entry> {
         let from_path = self.to_smb_posix_path(from);
         let to_path = self.to_smb_posix_path(to);
 
@@ -716,7 +763,9 @@ impl SmbBackend {
         {
             let (username, password) = match &self.config.auth {
                 SmbAuth::Anonymous => ("guest".to_string(), String::new()),
-                SmbAuth::Ntlm { username, password, .. } => (username.clone(), password.clone()),
+                SmbAuth::Ntlm {
+                    username, password, ..
+                } => (username.clone(), password.clone()),
                 SmbAuth::Kerberos { .. } => {
                     return Err(CfkError::Unsupported(
                         "Kerberos mount requires system configuration".into(),
@@ -738,8 +787,10 @@ impl SmbBackend {
 
             let status = Command::new("mount")
                 .args([
-                    "-t", "cifs",
-                    "-o", &options,
+                    "-t",
+                    "cifs",
+                    "-o",
+                    &options,
                     &source,
                     mount_point.to_str().unwrap_or("/mnt"),
                 ])

@@ -12,11 +12,14 @@ pub mod agrep;
 #[cfg(feature = "pandoc")]
 pub mod pandoc;
 
+// The `ocr` and `eza` features are declared but have no integration yet:
+// `ocr.rs` and `eza.rs` were never written. Fail loudly rather than with a
+// missing-module error (and rustfmt resolves every `mod`, cfg or not).
 #[cfg(feature = "ocr")]
-pub mod ocr;
+compile_error!("cfk-integrations: the `ocr` feature has no implementation yet");
 
 #[cfg(feature = "eza")]
-pub mod eza;
+compile_error!("cfk-integrations: the `eza` feature has no implementation yet");
 
 use cfk_core::error::{CfkError, CfkResult};
 use std::process::Output;

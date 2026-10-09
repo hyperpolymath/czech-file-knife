@@ -126,8 +126,8 @@ impl IpfsBackend {
             params.push(("path", n));
         }
 
-        let part = multipart::Part::bytes(data.to_vec())
-            .file_name(name.unwrap_or("file").to_string());
+        let part =
+            multipart::Part::bytes(data.to_vec()).file_name(name.unwrap_or("file").to_string());
         let form = multipart::Form::new().part("file", part);
 
         let mut request = self.http.post(&url);
@@ -319,7 +319,10 @@ impl IpfsBackend {
     async fn mfs_rm(&self, path: &str, recursive: bool) -> CfkResult<()> {
         self.api_post(
             "files/rm",
-            &[("arg", path), ("recursive", if recursive { "true" } else { "false" })],
+            &[
+                ("arg", path),
+                ("recursive", if recursive { "true" } else { "false" }),
+            ],
         )
         .await?;
         Ok(())
@@ -527,7 +530,9 @@ impl StorageBackend for IpfsBackend {
                 .iter()
                 .map(|p| {
                     let mut metadata = Metadata::default();
-                    metadata.custom.insert("pin_type".to_string(), p.pin_type.clone());
+                    metadata
+                        .custom
+                        .insert("pin_type".to_string(), p.pin_type.clone());
 
                     Entry {
                         path: VirtualPath::new(&self.id, &p.cid),
@@ -746,9 +751,7 @@ impl IpfsBackend {
             path: String,
         }
 
-        let resp: ResolveResponse = self
-            .api_post_json("name/resolve", &[("arg", name)])
-            .await?;
+        let resp: ResolveResponse = self.api_post_json("name/resolve", &[("arg", name)]).await?;
 
         Ok(resp.path)
     }
@@ -763,9 +766,7 @@ impl IpfsBackend {
             value: String,
         }
 
-        let resp: PublishResponse = self
-            .api_post_json("name/publish", &[("arg", cid)])
-            .await?;
+        let resp: PublishResponse = self.api_post_json("name/publish", &[("arg", cid)]).await?;
 
         Ok(resp.name)
     }

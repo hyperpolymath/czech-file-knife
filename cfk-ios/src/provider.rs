@@ -58,7 +58,9 @@ impl StorageBackend for PlaceholderBackend {
     }
 
     async fn get_metadata(&self, _path: &VirtualPath) -> cfk_core::CfkResult<Entry> {
-        Err(cfk_core::CfkError::Unsupported("Placeholder backend".into()))
+        Err(cfk_core::CfkError::Unsupported(
+            "Placeholder backend".into(),
+        ))
     }
 
     async fn list_directory(
@@ -66,7 +68,9 @@ impl StorageBackend for PlaceholderBackend {
         _path: &VirtualPath,
         _options: &ListOptions,
     ) -> cfk_core::CfkResult<DirectoryListing> {
-        Err(cfk_core::CfkError::Unsupported("Placeholder backend".into()))
+        Err(cfk_core::CfkError::Unsupported(
+            "Placeholder backend".into(),
+        ))
     }
 
     async fn read_file(
@@ -74,7 +78,9 @@ impl StorageBackend for PlaceholderBackend {
         _path: &VirtualPath,
         _options: &ReadOptions,
     ) -> cfk_core::CfkResult<ByteStream> {
-        Err(cfk_core::CfkError::Unsupported("Placeholder backend".into()))
+        Err(cfk_core::CfkError::Unsupported(
+            "Placeholder backend".into(),
+        ))
     }
 
     async fn write_file(
@@ -83,7 +89,9 @@ impl StorageBackend for PlaceholderBackend {
         _data: Bytes,
         _options: &WriteOptions,
     ) -> cfk_core::CfkResult<Entry> {
-        Err(cfk_core::CfkError::Unsupported("Placeholder backend".into()))
+        Err(cfk_core::CfkError::Unsupported(
+            "Placeholder backend".into(),
+        ))
     }
 
     async fn write_file_stream(
@@ -93,7 +101,9 @@ impl StorageBackend for PlaceholderBackend {
         _size_hint: Option<u64>,
         _options: &WriteOptions,
     ) -> cfk_core::CfkResult<Entry> {
-        Err(cfk_core::CfkError::Unsupported("Placeholder backend".into()))
+        Err(cfk_core::CfkError::Unsupported(
+            "Placeholder backend".into(),
+        ))
     }
 
     async fn delete(
@@ -101,11 +111,15 @@ impl StorageBackend for PlaceholderBackend {
         _path: &VirtualPath,
         _options: &DeleteOptions,
     ) -> cfk_core::CfkResult<()> {
-        Err(cfk_core::CfkError::Unsupported("Placeholder backend".into()))
+        Err(cfk_core::CfkError::Unsupported(
+            "Placeholder backend".into(),
+        ))
     }
 
     async fn create_directory(&self, _path: &VirtualPath) -> cfk_core::CfkResult<Entry> {
-        Err(cfk_core::CfkError::Unsupported("Placeholder backend".into()))
+        Err(cfk_core::CfkError::Unsupported(
+            "Placeholder backend".into(),
+        ))
     }
 
     async fn copy(
@@ -114,7 +128,9 @@ impl StorageBackend for PlaceholderBackend {
         _to: &VirtualPath,
         _options: &CopyOptions,
     ) -> cfk_core::CfkResult<Entry> {
-        Err(cfk_core::CfkError::Unsupported("Placeholder backend".into()))
+        Err(cfk_core::CfkError::Unsupported(
+            "Placeholder backend".into(),
+        ))
     }
 
     async fn rename(
@@ -123,11 +139,15 @@ impl StorageBackend for PlaceholderBackend {
         _to: &VirtualPath,
         _options: &MoveOptions,
     ) -> cfk_core::CfkResult<Entry> {
-        Err(cfk_core::CfkError::Unsupported("Placeholder backend".into()))
+        Err(cfk_core::CfkError::Unsupported(
+            "Placeholder backend".into(),
+        ))
     }
 
     async fn get_space_info(&self) -> cfk_core::CfkResult<SpaceInfo> {
-        Err(cfk_core::CfkError::Unsupported("Placeholder backend".into()))
+        Err(cfk_core::CfkError::Unsupported(
+            "Placeholder backend".into(),
+        ))
     }
 }
 
@@ -256,10 +276,7 @@ impl FileProviderManager {
         let path = VirtualPath::parse_uri(&format!("cfk://{}/{}", domain_id.0, path_str))
             .unwrap_or_else(|| VirtualPath::new(&domain_id.0, &path_str));
 
-        let entry = backend
-            .get_metadata(&path)
-            .await
-            .map_err(IosError::Core)?;
+        let entry = backend.get_metadata(&path).await.map_err(IosError::Core)?;
 
         // Determine parent
         let parent = if path.segments.is_empty() {
@@ -340,7 +357,7 @@ impl FileProviderManager {
         }
 
         // Write to cache
-        let cache_path = self.cache_dir.join(&identifier.0.replace([':', '/'], "_"));
+        let cache_path = self.cache_dir.join(identifier.0.replace([':', '/'], "_"));
         tokio::fs::write(&cache_path, &data)
             .await
             .map_err(|e| IosError::Core(cfk_core::CfkError::Io(e)))?;
@@ -400,7 +417,11 @@ impl FileProviderManager {
             .unwrap_or_else(|| VirtualPath::new(&domain_id.0, &path_str));
 
         let entry = backend
-            .write_file(&path, Bytes::copy_from_slice(contents), &WriteOptions::default())
+            .write_file(
+                &path,
+                Bytes::copy_from_slice(contents),
+                &WriteOptions::default(),
+            )
             .await
             .map_err(IosError::Core)?;
 
@@ -432,7 +453,7 @@ impl FileProviderManager {
             .map_err(IosError::Core)?;
 
         // Remove from cache
-        let cache_path = self.cache_dir.join(&identifier.0.replace([':', '/'], "_"));
+        let cache_path = self.cache_dir.join(identifier.0.replace([':', '/'], "_"));
         let _ = tokio::fs::remove_file(&cache_path).await;
 
         Ok(())
@@ -467,9 +488,8 @@ impl FileProviderManager {
             VirtualPath::parse_uri(&format!("cfk://{}/{}", domain_id.0, new_parent_path_str))
                 .unwrap_or_else(|| VirtualPath::new(&domain_id.0, &new_parent_path_str));
 
-        let new_name = new_name.unwrap_or_else(|| {
-            from_path.segments.last().map(|s| s.as_str()).unwrap_or("")
-        });
+        let new_name =
+            new_name.unwrap_or_else(|| from_path.segments.last().map(|s| s.as_str()).unwrap_or(""));
 
         let to_path = new_parent_path.join(new_name);
 
@@ -490,7 +510,7 @@ impl FileProviderManager {
 
     /// Evict item from local cache
     pub async fn evict_item(&self, identifier: &ItemIdentifier) -> IosResult<()> {
-        let cache_path = self.cache_dir.join(&identifier.0.replace([':', '/'], "_"));
+        let cache_path = self.cache_dir.join(identifier.0.replace([':', '/'], "_"));
         tokio::fs::remove_file(&cache_path)
             .await
             .map_err(|e| IosError::Core(cfk_core::CfkError::Io(e)))?;

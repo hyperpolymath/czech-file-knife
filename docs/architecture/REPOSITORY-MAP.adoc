@@ -25,6 +25,10 @@ predecessors did.
 | yes
 | AI editor rules. Cline/Cursor/Windsurf read these from the project
 
+| `.clusterfuzzlite/`
+| yes
+| ClusterFuzzLite build config; inert until its cflite_* workflows land
+
 | `.cursorrules`
 | yes
 | ROOT, so the copies formerly under .machine_readable/ai/ were inert.
@@ -97,6 +101,14 @@ predecessors did.
 | optional
 | estate docs gate (standards scripts/check-docs-presence.sh) requires CONTRIBUTING at the ROOT; this is the copy it verifies
 
+| `Cargo.lock`
+| yes
+| workspace lockfile; `cargo build --locked` resolves against it
+
+| `Cargo.toml`
+| yes
+| workspace root manifest (members: the cfk-* crates)
+
 | `GEMINI.md`
 | optional
 | pointer to CLAUDE.md for repos without AGENTS.md yet
@@ -129,6 +141,42 @@ predecessors did.
 | yes
 | build orchestration: just/ phase modules, container/, docs-seed/, templates/, guix.scm (canon 1.2.1 guix-primary template_ref = build/)
 
+| `cfk-cache/`
+| yes
+| offline caching layer
+
+| `cfk-cli/`
+| yes
+| the `cfk` binary
+
+| `cfk-core/`
+| yes
+| core traits and types
+
+| `cfk-integrations/`
+| yes
+| external tool integrations (aria2, agrep, pandoc, OCR, eza)
+
+| `cfk-ios/`
+| yes
+| iOS File Provider bridge (Rust crate + swift/)
+
+| `cfk-providers/`
+| yes
+| storage backend providers
+
+| `cfk-search/`
+| yes
+| full-text search
+
+| `cfk-tui/`
+| yes
+| Ada TUI (GNAT project cfk_tui.gpr); not a Cargo member
+
+| `cfk-vfs/`
+| yes
+| FUSE virtual filesystem
+
 | `ci/`
 | yes
 | .gitlab-ci.yml + .pre-commit-config.yaml; ci/README.adoc records the out-of-band GitLab project setting these require
@@ -136,6 +184,10 @@ predecessors did.
 | `coordination.k9.ncl`
 | yes
 | repo-local session binding (template-mandated)
+
+| `deny.toml`
+| yes
+| cargo-deny policy; cargo-deny reads it from the workspace root
 
 | `docs/`
 | yes
@@ -149,9 +201,21 @@ predecessors did.
 | optional
 | optional feature packs
 
+| `fuzz/`
+| yes
+| cargo-fuzz project (fuzz_path target); cargo-fuzz expects fuzz/ at the root
+
 | `mise.toml`
 | yes
 | pinned toolchains
+
+| `ops/`
+| yes
+| podman-compose for the Kafka/Postgres audit+metadata services, and their setup scripts
+
+| `packaging/`
+| yes
+| distro packaging recipes (arch, debian, rpm, flatpak, macports, scoop, winget, chocolatey)
 
 | `rsr-template-repo_chora.deed`
 | yes
@@ -213,7 +277,6 @@ your own repo - but do not read their emptiness as neglect here.
 | `docs/reports/compliance/`
 | `docs/reports/maintenance/`
 | `docs/reports/performance/`
-| `docs/reports/quality/`
 | `docs/reports/security/`
 | `docs/standards/`
 | `docs/theory/`
@@ -227,7 +290,6 @@ your own repo - but do not read their emptiness as neglect here.
 | `docs/whitepapers/academic/`
 | `docs/whitepapers/industry/`
 | `docs/whitepapers/outreach/`
-| `examples/`
 | `features/boj-server/`
 | `features/panic-attacker/`
 | `src/aspects/`

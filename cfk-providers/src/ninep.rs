@@ -686,7 +686,10 @@ impl StorageBackend for NinePBackend {
     async fn write_file(&self, path: &VirtualPath, data: Bytes) -> CfkResult<Entry> {
         // Walk to parent and create file
         let parent = if path.segments.len() > 1 {
-            VirtualPath::new(&self.id, &path.segments[..path.segments.len() - 1].join("/"))
+            VirtualPath::new(
+                &self.id,
+                &path.segments[..path.segments.len() - 1].join("/"),
+            )
         } else {
             VirtualPath::new(&self.id, "")
         };
@@ -815,7 +818,10 @@ impl StorageBackend for NinePBackend {
 
     async fn create_directory(&self, path: &VirtualPath) -> CfkResult<Entry> {
         let parent = if path.segments.len() > 1 {
-            VirtualPath::new(&self.id, &path.segments[..path.segments.len() - 1].join("/"))
+            VirtualPath::new(
+                &self.id,
+                &path.segments[..path.segments.len() - 1].join("/"),
+            )
         } else {
             VirtualPath::new(&self.id, "")
         };

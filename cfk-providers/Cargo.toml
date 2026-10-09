@@ -21,6 +21,10 @@ sftp = []
 nfs = []
 smb = []
 syncthing = []
+# Declared so `cfg(feature = "ceph")` is a known cfg, but it does NOT build
+# yet: ceph.rs predates the current StorageBackend trait (32 compile errors
+# at 2026-10-09). Kept out of `all` until it does.
+ceph = []
 all = ["local", "dropbox", "gdrive", "onedrive", "box", "s3", "ipfs", "webdav", "afs", "ninep", "sftp", "nfs", "smb", "syncthing"]
 
 [dependencies]

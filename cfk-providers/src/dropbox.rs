@@ -119,7 +119,10 @@ impl DropboxBackend {
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            return Err(CfkError::Auth(format!("Token exchange failed: {}", error_text)));
+            return Err(CfkError::Auth(format!(
+                "Token exchange failed: {}",
+                error_text
+            )));
         }
 
         #[derive(Deserialize)]

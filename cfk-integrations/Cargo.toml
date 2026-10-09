@@ -13,7 +13,9 @@ pandoc = []
 ocr = ["tesseract"]
 tesseract = []
 eza = []
-all = ["aria2", "agrep", "pandoc", "ocr", "eza"]
+# `ocr` and `eza` are declared but have no integration yet (src/lib.rs
+# fails them with compile_error!). Kept out of `all` until they do.
+all = ["aria2", "agrep", "pandoc"]
 
 [dependencies]
 cfk-core = { path = "../cfk-core" }

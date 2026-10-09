@@ -121,7 +121,10 @@ impl BoxBackend {
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            return Err(CfkError::Auth(format!("Token exchange failed: {}", error_text)));
+            return Err(CfkError::Auth(format!(
+                "Token exchange failed: {}",
+                error_text
+            )));
         }
 
         #[derive(Deserialize)]
@@ -183,7 +186,10 @@ impl BoxBackend {
             let response = self
                 .http
                 .get(format!("{}/folders/{}/items", BOX_API_URL, current_id))
-                .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+                .header(
+                    "Authorization",
+                    format!("Bearer {}", self.get_access_token().await?),
+                )
                 .query(&[("fields", "id,name,type")])
                 .send()
                 .await
@@ -295,7 +301,10 @@ impl StorageBackend for BoxBackend {
         let response = self
             .http
             .get(format!("{}/folders/{}", BOX_API_URL, item_id))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .send()
             .await
             .map_err(|e| CfkError::Network(e.to_string()))?;
@@ -319,7 +328,10 @@ impl StorageBackend for BoxBackend {
         let response = self
             .http
             .get(format!("{}/files/{}", BOX_API_URL, item_id))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .send()
             .await
             .map_err(|e| CfkError::Network(e.to_string()))?;
@@ -349,7 +361,10 @@ impl StorageBackend for BoxBackend {
             let response = self
                 .http
                 .get(format!("{}/folders/{}/items", BOX_API_URL, folder_id))
-                .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+                .header(
+                    "Authorization",
+                    format!("Bearer {}", self.get_access_token().await?),
+                )
                 .query(&[
                     ("fields", "id,type,name,size,created_at,modified_at,sha1"),
                     ("limit", &limit.to_string()),
@@ -391,7 +406,10 @@ impl StorageBackend for BoxBackend {
         let response = self
             .http
             .get(format!("{}/files/{}/content", BOX_API_URL, file_id))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .send()
             .await
             .map_err(|e| CfkError::Network(e.to_string()))?;
@@ -413,7 +431,10 @@ impl StorageBackend for BoxBackend {
 
     async fn write_file(&self, path: &VirtualPath, data: Bytes) -> CfkResult<Entry> {
         let parent_path = if path.segments.len() > 1 {
-            VirtualPath::new(&self.id, &path.segments[..path.segments.len() - 1].join("/"))
+            VirtualPath::new(
+                &self.id,
+                &path.segments[..path.segments.len() - 1].join("/"),
+            )
         } else {
             VirtualPath::new(&self.id, "")
         };
@@ -440,8 +461,8 @@ impl StorageBackend for BoxBackend {
             parent: Parent { id: parent_id },
         };
 
-        let attributes_json =
-            serde_json::to_string(&attributes).map_err(|e| CfkError::Serialization(e.to_string()))?;
+        let attributes_json = serde_json::to_string(&attributes)
+            .map_err(|e| CfkError::Serialization(e.to_string()))?;
 
         let body = format!(
             "--{}\r\nContent-Disposition: form-data; name=\"attributes\"\r\n\r\n{}\r\n--{}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{}\"\r\nContent-Type: application/octet-stream\r\n\r\n",
@@ -455,7 +476,10 @@ impl StorageBackend for BoxBackend {
         let response = self
             .http
             .post(format!("{}/files/content", BOX_UPLOAD_URL))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .header(
                 "Content-Type",
                 format!("multipart/form-data; boundary={}", boundary),
@@ -494,7 +518,10 @@ impl StorageBackend for BoxBackend {
         let response = self
             .http
             .delete(format!("{}/files/{}", BOX_API_URL, item_id))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .send()
             .await
             .map_err(|e| CfkError::Network(e.to_string()))?;
@@ -506,8 +533,14 @@ impl StorageBackend for BoxBackend {
         // Try as folder
         let response = self
             .http
-            .delete(format!("{}/folders/{}?recursive=true", BOX_API_URL, item_id))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .delete(format!(
+                "{}/folders/{}?recursive=true",
+                BOX_API_URL, item_id
+            ))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .send()
             .await
             .map_err(|e| CfkError::Network(e.to_string()))?;
@@ -526,7 +559,10 @@ impl StorageBackend for BoxBackend {
 
     async fn create_directory(&self, path: &VirtualPath) -> CfkResult<Entry> {
         let parent_path = if path.segments.len() > 1 {
-            VirtualPath::new(&self.id, &path.segments[..path.segments.len() - 1].join("/"))
+            VirtualPath::new(
+                &self.id,
+                &path.segments[..path.segments.len() - 1].join("/"),
+            )
         } else {
             VirtualPath::new(&self.id, "")
         };
@@ -553,7 +589,10 @@ impl StorageBackend for BoxBackend {
         let response = self
             .http
             .post(format!("{}/folders", BOX_API_URL))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .json(&body)
             .send()
             .await
@@ -598,7 +637,10 @@ impl StorageBackend for BoxBackend {
         let response = self
             .http
             .post(format!("{}/files/{}/copy", BOX_API_URL, item_id))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .json(&body)
             .send()
             .await
@@ -618,7 +660,10 @@ impl StorageBackend for BoxBackend {
         let response = self
             .http
             .post(format!("{}/folders/{}/copy", BOX_API_URL, item_id))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .json(&body)
             .send()
             .await
@@ -648,7 +693,10 @@ impl StorageBackend for BoxBackend {
         let response = self
             .http
             .put(format!("{}/files/{}", BOX_API_URL, item_id))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .json(&body)
             .send()
             .await
@@ -672,7 +720,10 @@ impl StorageBackend for BoxBackend {
         let response = self
             .http
             .put(format!("{}/folders/{}", BOX_API_URL, item_id))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .json(&body)
             .send()
             .await
@@ -695,7 +746,10 @@ impl StorageBackend for BoxBackend {
         let response = self
             .http
             .get(format!("{}/users/me", BOX_API_URL))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .query(&[("fields", "space_amount,space_used")])
             .send()
             .await

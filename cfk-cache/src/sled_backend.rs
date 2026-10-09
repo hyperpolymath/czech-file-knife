@@ -51,7 +51,10 @@ impl SledBackend {
     }
 
     /// Iterate over all keys with a given prefix
-    pub fn scan_prefix(&self, prefix: &[u8]) -> impl Iterator<Item = CacheResult<(Vec<u8>, Vec<u8>)>> + '_ {
+    pub fn scan_prefix(
+        &self,
+        prefix: &[u8],
+    ) -> impl Iterator<Item = CacheResult<(Vec<u8>, Vec<u8>)>> + '_ {
         self.db.scan_prefix(prefix).map(|result| {
             result
                 .map(|(k, v)| (k.to_vec(), v.to_vec()))

@@ -118,7 +118,10 @@ impl OneDriveBackend {
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            return Err(CfkError::Auth(format!("Token exchange failed: {}", error_text)));
+            return Err(CfkError::Auth(format!(
+                "Token exchange failed: {}",
+                error_text
+            )));
         }
 
         #[derive(Deserialize)]
@@ -296,7 +299,10 @@ impl StorageBackend for OneDriveBackend {
         let response = self
             .http
             .get(&url)
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .send()
             .await
             .map_err(|e| CfkError::Network(e.to_string()))?;
@@ -337,7 +343,10 @@ impl StorageBackend for OneDriveBackend {
             let response = self
                 .http
                 .get(&url)
-                .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+                .header(
+                    "Authorization",
+                    format!("Bearer {}", self.get_access_token().await?),
+                )
                 .send()
                 .await
                 .map_err(|e| CfkError::Network(e.to_string()))?;
@@ -372,7 +381,10 @@ impl StorageBackend for OneDriveBackend {
         let response = self
             .http
             .get(&url)
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .send()
             .await
             .map_err(|e| CfkError::Network(e.to_string()))?;
@@ -398,7 +410,10 @@ impl StorageBackend for OneDriveBackend {
         let response = self
             .http
             .put(&url)
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .header("Content-Type", "application/octet-stream")
             .body(data.to_vec())
             .send()
@@ -434,7 +449,10 @@ impl StorageBackend for OneDriveBackend {
         let response = self
             .http
             .delete(&url)
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .send()
             .await
             .map_err(|e| CfkError::Network(e.to_string()))?;
@@ -453,7 +471,10 @@ impl StorageBackend for OneDriveBackend {
 
     async fn create_directory(&self, path: &VirtualPath) -> CfkResult<Entry> {
         let parent_path = if path.segments.len() > 1 {
-            VirtualPath::new(&self.id, &path.segments[..path.segments.len() - 1].join("/"))
+            VirtualPath::new(
+                &self.id,
+                &path.segments[..path.segments.len() - 1].join("/"),
+            )
         } else {
             VirtualPath::new(&self.id, "")
         };
@@ -478,7 +499,10 @@ impl StorageBackend for OneDriveBackend {
         let response = self
             .http
             .post(&url)
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .json(&body)
             .send()
             .await
@@ -506,7 +530,10 @@ impl StorageBackend for OneDriveBackend {
         let parent_response = self
             .http
             .get(&self.api_path(&to_parent))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .send()
             .await
             .map_err(|e| CfkError::Network(e.to_string()))?;
@@ -536,7 +563,10 @@ impl StorageBackend for OneDriveBackend {
         let _response = self
             .http
             .post(format!("{}:/copy", from_url))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .json(&body)
             .send()
             .await
@@ -560,7 +590,10 @@ impl StorageBackend for OneDriveBackend {
         let response = self
             .http
             .patch(&url)
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .json(&body)
             .send()
             .await
@@ -584,7 +617,10 @@ impl StorageBackend for OneDriveBackend {
         let response = self
             .http
             .get(format!("{}/me/drive", GRAPH_API_URL))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .send()
             .await
             .map_err(|e| CfkError::Network(e.to_string()))?;

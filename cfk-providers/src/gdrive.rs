@@ -132,7 +132,10 @@ impl GoogleDriveBackend {
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            return Err(CfkError::Auth(format!("Token exchange failed: {}", error_text)));
+            return Err(CfkError::Auth(format!(
+                "Token exchange failed: {}",
+                error_text
+            )));
         }
 
         #[derive(Deserialize)]
@@ -200,7 +203,10 @@ impl GoogleDriveBackend {
             let response = self
                 .http
                 .get(format!("{}/files", DRIVE_API_URL))
-                .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+                .header(
+                    "Authorization",
+                    format!("Bearer {}", self.get_access_token().await?),
+                )
                 .query(&[("q", &query), ("fields", &"files(id,name)".to_string())])
                 .send()
                 .await
@@ -325,7 +331,10 @@ impl StorageBackend for GoogleDriveBackend {
         let response = self
             .http
             .get(format!("{}/files/{}", DRIVE_API_URL, file_id))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .query(&[(
                 "fields",
                 "id,name,mimeType,size,createdTime,modifiedTime,parents,trashed,md5Checksum",
@@ -424,7 +433,10 @@ impl StorageBackend for GoogleDriveBackend {
         let response = self
             .http
             .get(format!("{}/files/{}?alt=media", DRIVE_API_URL, file_id))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .send()
             .await
             .map_err(|e| CfkError::Network(e.to_string()))?;
@@ -490,8 +502,8 @@ impl StorageBackend for GoogleDriveBackend {
                 parents: vec![parent_id],
             };
 
-            let metadata_json =
-                serde_json::to_string(&metadata).map_err(|e| CfkError::Serialization(e.to_string()))?;
+            let metadata_json = serde_json::to_string(&metadata)
+                .map_err(|e| CfkError::Serialization(e.to_string()))?;
 
             // Use multipart upload
             let boundary = "cfk_boundary_12345";
@@ -533,7 +545,10 @@ impl StorageBackend for GoogleDriveBackend {
         let response = self
             .http
             .delete(format!("{}/files/{}", DRIVE_API_URL, file_id))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .send()
             .await
             .map_err(|e| CfkError::Network(e.to_string()))?;
@@ -690,7 +705,10 @@ impl StorageBackend for GoogleDriveBackend {
         let response = self
             .http
             .get(format!("{}/about", DRIVE_API_URL))
-            .header("Authorization", format!("Bearer {}", self.get_access_token().await?))
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.get_access_token().await?),
+            )
             .query(&[("fields", "storageQuota")])
             .send()
             .await

@@ -173,12 +173,7 @@ impl AfsBackend {
         let local_path = self.to_local_path(path);
 
         let status = Command::new("fs")
-            .args([
-                "setacl",
-                local_path.to_str().unwrap(),
-                principal,
-                rights,
-            ])
+            .args(["setacl", local_path.to_str().unwrap(), principal, rights])
             .status()
             .map_err(|e| CfkError::Io(e.to_string()))?;
 
@@ -283,10 +278,7 @@ fn parse_quota(output: &str) -> CfkResult<AfsQuota> {
             quota.volume = parts[0].to_string();
             quota.quota_kb = parts[1].parse().unwrap_or(0);
             quota.used_kb = parts[2].parse().unwrap_or(0);
-            quota.percent_used = parts[3]
-                .trim_end_matches('%')
-                .parse()
-                .unwrap_or(0.0);
+            quota.percent_used = parts[3].trim_end_matches('%').parse().unwrap_or(0.0);
             break;
         }
     }

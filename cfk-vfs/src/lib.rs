@@ -95,13 +95,15 @@ impl VfsMount {
         // Validate mount point exists and is a directory
         if !mount_point.exists() {
             return Err(CfkError::Other(format!(
-                "Mount point does not exist: {}", mount_point.display()
+                "Mount point does not exist: {}",
+                mount_point.display()
             )));
         }
 
         if !mount_point.is_dir() {
             return Err(CfkError::Other(format!(
-                "Mount point is not a directory: {}", mount_point.display()
+                "Mount point is not a directory: {}",
+                mount_point.display()
             )));
         }
 
@@ -148,9 +150,8 @@ impl VfsMount {
         }
 
         let real = self.resolve(path)?;
-        std::fs::read(&real).map_err(|e| CfkError::Other(format!(
-            "VFS read failed for {}: {}", real.display(), e
-        )))
+        std::fs::read(&real)
+            .map_err(|e| CfkError::Other(format!("VFS read failed for {}: {}", real.display(), e)))
     }
 
     /// Write a file to the VFS.
@@ -163,14 +164,13 @@ impl VfsMount {
 
         // Ensure parent directories exist
         if let Some(parent) = real.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| CfkError::Other(format!(
-                "VFS mkdir failed for {}: {}", parent.display(), e
-            )))?;
+            std::fs::create_dir_all(parent).map_err(|e| {
+                CfkError::Other(format!("VFS mkdir failed for {}: {}", parent.display(), e))
+            })?;
         }
 
-        std::fs::write(&real, data).map_err(|e| CfkError::Other(format!(
-            "VFS write failed for {}: {}", real.display(), e
-        )))
+        std::fs::write(&real, data)
+            .map_err(|e| CfkError::Other(format!("VFS write failed for {}: {}", real.display(), e)))
     }
 
     /// List entries in a directory.
@@ -182,19 +182,18 @@ impl VfsMount {
         let real = self.resolve(path)?;
         let mut entries = Vec::new();
 
-        let read_dir = std::fs::read_dir(&real).map_err(|e| CfkError::Other(format!(
-            "VFS readdir failed for {}: {}", real.display(), e
-        )))?;
+        let read_dir = std::fs::read_dir(&real).map_err(|e| {
+            CfkError::Other(format!("VFS readdir failed for {}: {}", real.display(), e))
+        })?;
 
         for entry_result in read_dir {
-            let entry = entry_result.map_err(|e| CfkError::Other(format!(
-                "VFS readdir entry failed: {}", e
-            )))?;
+            let entry = entry_result
+                .map_err(|e| CfkError::Other(format!("VFS readdir entry failed: {}", e)))?;
 
             let name = entry.file_name().to_string_lossy().to_string();
-            let file_type = entry.file_type().map_err(|e| CfkError::Other(format!(
-                "VFS file_type failed: {}", e
-            )))?;
+            let file_type = entry
+                .file_type()
+                .map_err(|e| CfkError::Other(format!("VFS file_type failed: {}", e)))?;
 
             let kind = if file_type.is_dir() {
                 VfsFileKind::Directory
@@ -220,9 +219,9 @@ impl VfsMount {
         }
 
         let real = self.resolve(path)?;
-        let meta = std::fs::metadata(&real).map_err(|e| CfkError::Other(format!(
-            "VFS stat failed for {}: {}", real.display(), e
-        )))?;
+        let meta = std::fs::metadata(&real).map_err(|e| {
+            CfkError::Other(format!("VFS stat failed for {}: {}", real.display(), e))
+        })?;
 
         let kind = if meta.is_dir() {
             VfsFileKind::Directory
@@ -256,9 +255,7 @@ impl VfsMount {
         } else {
             std::fs::remove_file(&real)
         }
-        .map_err(|e| CfkError::Other(format!(
-            "VFS delete failed for {}: {}", real.display(), e
-        )))
+        .map_err(|e| CfkError::Other(format!("VFS delete failed for {}: {}", real.display(), e)))
     }
 
     /// Create a directory (and any missing parents).
@@ -268,9 +265,8 @@ impl VfsMount {
         }
 
         let real = self.resolve(path)?;
-        std::fs::create_dir_all(&real).map_err(|e| CfkError::Other(format!(
-            "VFS mkdir failed for {}: {}", real.display(), e
-        )))
+        std::fs::create_dir_all(&real)
+            .map_err(|e| CfkError::Other(format!("VFS mkdir failed for {}: {}", real.display(), e)))
     }
 
     /// Rename / move a file or directory.
@@ -282,9 +278,14 @@ impl VfsMount {
         let real_from = self.resolve(from)?;
         let real_to = self.resolve(to)?;
 
-        std::fs::rename(&real_from, &real_to).map_err(|e| CfkError::Other(format!(
-            "VFS rename failed: {} -> {}: {}", real_from.display(), real_to.display(), e
-        )))
+        std::fs::rename(&real_from, &real_to).map_err(|e| {
+            CfkError::Other(format!(
+                "VFS rename failed: {} -> {}: {}",
+                real_from.display(),
+                real_to.display(),
+                e
+            ))
+        })
     }
 
     // ----------------------------------------------------------------
@@ -305,9 +306,7 @@ impl VfsMount {
                 std::path::Component::ParentDir => {
                     // Prevent escaping the mount root
                     if resolved == self.mount_point {
-                        return Err(CfkError::Other(
-                            "Path traversal beyond mount root".into(),
-                        ));
+                        return Err(CfkError::Other("Path traversal beyond mount root".into()));
                     }
                     resolved.pop();
                 }
@@ -401,7 +400,11 @@ mod tests {
 
     #[test]
     fn test_mount_nonexistent_fails() {
-        let result = VfsMount::mount("local", "/tmp/nonexistent_cfk_test_dir_12345", MountOptions::default());
+        let result = VfsMount::mount(
+            "local",
+            "/tmp/nonexistent_cfk_test_dir_12345",
+            MountOptions::default(),
+        );
         assert!(result.is_err());
     }
 
@@ -417,7 +420,8 @@ mod tests {
         assert_eq!(vfs.mount_point(), &tmp);
 
         // Write a file
-        vfs.write_file(Path::new("hello.txt"), b"Hello, VFS!").unwrap();
+        vfs.write_file(Path::new("hello.txt"), b"Hello, VFS!")
+            .unwrap();
 
         // Read it back
         let data = vfs.read_file(Path::new("hello.txt")).unwrap();
@@ -438,7 +442,8 @@ mod tests {
         assert_eq!(meta.kind, VfsFileKind::Directory);
 
         // Rename
-        vfs.rename(Path::new("hello.txt"), Path::new("renamed.txt")).unwrap();
+        vfs.rename(Path::new("hello.txt"), Path::new("renamed.txt"))
+            .unwrap();
         let entries = vfs.read_dir(Path::new("")).unwrap();
         assert!(entries.iter().any(|e| e.name == "renamed.txt"));
         assert!(!entries.iter().any(|e| e.name == "hello.txt"));

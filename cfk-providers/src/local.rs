@@ -101,10 +101,18 @@ impl StorageBackend for LocalBackend {
             return Err(CfkError::NotFound(path.to_string()));
         }
         let (kind, metadata) = self.metadata_from_path(&real).await?;
-        Ok(Entry { path: path.clone(), kind, metadata })
+        Ok(Entry {
+            path: path.clone(),
+            kind,
+            metadata,
+        })
     }
 
-    async fn list_directory(&self, path: &VirtualPath, _options: &ListOptions) -> CfkResult<DirectoryListing> {
+    async fn list_directory(
+        &self,
+        path: &VirtualPath,
+        _options: &ListOptions,
+    ) -> CfkResult<DirectoryListing> {
         let real = self.to_real_path(path);
         if !real.is_dir() {
             return Err(CfkError::NotADirectory(path.to_string()));
@@ -117,7 +125,11 @@ impl StorageBackend for LocalBackend {
             let entry_path = entry.path();
             let vpath = self.to_virtual_path(&entry_path)?;
             let (kind, metadata) = self.metadata_from_path(&entry_path).await?;
-            entries.push(Entry { path: vpath, kind, metadata });
+            entries.push(Entry {
+                path: vpath,
+                kind,
+                metadata,
+            });
         }
 
         Ok(DirectoryListing::new(path.clone(), entries))
@@ -146,7 +158,12 @@ impl StorageBackend for LocalBackend {
         Ok(Box::pin(futures::stream::once(async { Ok(bytes) })))
     }
 
-    async fn write_file(&self, path: &VirtualPath, data: Bytes, options: &WriteOptions) -> CfkResult<Entry> {
+    async fn write_file(
+        &self,
+        path: &VirtualPath,
+        data: Bytes,
+        options: &WriteOptions,
+    ) -> CfkResult<Entry> {
         let real = self.to_real_path(path);
 
         if real.exists() && !options.overwrite {
@@ -163,7 +180,13 @@ impl StorageBackend for LocalBackend {
         self.get_metadata(path).await
     }
 
-    async fn write_file_stream(&self, path: &VirtualPath, mut stream: ByteStream, _size_hint: Option<u64>, options: &WriteOptions) -> CfkResult<Entry> {
+    async fn write_file_stream(
+        &self,
+        path: &VirtualPath,
+        mut stream: ByteStream,
+        _size_hint: Option<u64>,
+        options: &WriteOptions,
+    ) -> CfkResult<Entry> {
         use futures::StreamExt;
 
         let mut data = Vec::new();
@@ -201,7 +224,12 @@ impl StorageBackend for LocalBackend {
         Ok(())
     }
 
-    async fn copy(&self, source: &VirtualPath, dest: &VirtualPath, options: &CopyOptions) -> CfkResult<Entry> {
+    async fn copy(
+        &self,
+        source: &VirtualPath,
+        dest: &VirtualPath,
+        options: &CopyOptions,
+    ) -> CfkResult<Entry> {
         let src_real = self.to_real_path(source);
         let dst_real = self.to_real_path(dest);
 
@@ -216,7 +244,12 @@ impl StorageBackend for LocalBackend {
         self.get_metadata(dest).await
     }
 
-    async fn rename(&self, source: &VirtualPath, dest: &VirtualPath, options: &MoveOptions) -> CfkResult<Entry> {
+    async fn rename(
+        &self,
+        source: &VirtualPath,
+        dest: &VirtualPath,
+        options: &MoveOptions,
+    ) -> CfkResult<Entry> {
         let src_real = self.to_real_path(source);
         let dst_real = self.to_real_path(dest);
 
@@ -245,10 +278,10 @@ impl StorageBackend for LocalBackend {
 
             if result == 0 {
                 let stat = unsafe { stat.assume_init() };
-                let block_size = stat.f_frsize as u64;
-                let total = stat.f_blocks as u64 * block_size;
-                let available = stat.f_bavail as u64 * block_size;
-                let free = stat.f_bfree as u64 * block_size;
+                let block_size = stat.f_frsize;
+                let total = stat.f_blocks * block_size;
+                let available = stat.f_bavail * block_size;
+                let free = stat.f_bfree * block_size;
                 let used = total - free;
 
                 Ok(SpaceInfo {
@@ -302,8 +335,14 @@ mod tests {
 
         // Write file
         let data = Bytes::from("Hello, World!");
-        let options = WriteOptions { overwrite: true, ..Default::default() };
-        let entry = backend.write_file(&path, data.clone(), &options).await.unwrap();
+        let options = WriteOptions {
+            overwrite: true,
+            ..Default::default()
+        };
+        let entry = backend
+            .write_file(&path, data.clone(), &options)
+            .await
+            .unwrap();
 
         assert!(entry.is_file());
         assert_eq!(entry.name(), Some("test.txt"));
@@ -325,11 +364,19 @@ mod tests {
         let path = make_path(&backend, "/test.txt");
 
         // First write succeeds
-        let options = WriteOptions { overwrite: false, ..Default::default() };
-        backend.write_file(&path, Bytes::from("first"), &options).await.unwrap();
+        let options = WriteOptions {
+            overwrite: false,
+            ..Default::default()
+        };
+        backend
+            .write_file(&path, Bytes::from("first"), &options)
+            .await
+            .unwrap();
 
         // Second write should fail
-        let result = backend.write_file(&path, Bytes::from("second"), &options).await;
+        let result = backend
+            .write_file(&path, Bytes::from("second"), &options)
+            .await;
         assert!(matches!(result, Err(CfkError::AlreadyExists(_))));
     }
 
@@ -349,19 +396,34 @@ mod tests {
         let backend = make_backend(&tmp);
 
         // Create some files and dirs
-        backend.write_file(
-            &make_path(&backend, "/file1.txt"),
-            Bytes::from("content1"),
-            &WriteOptions { overwrite: true, ..Default::default() },
-        ).await.unwrap();
+        backend
+            .write_file(
+                &make_path(&backend, "/file1.txt"),
+                Bytes::from("content1"),
+                &WriteOptions {
+                    overwrite: true,
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
 
-        backend.write_file(
-            &make_path(&backend, "/file2.txt"),
-            Bytes::from("content2"),
-            &WriteOptions { overwrite: true, ..Default::default() },
-        ).await.unwrap();
+        backend
+            .write_file(
+                &make_path(&backend, "/file2.txt"),
+                Bytes::from("content2"),
+                &WriteOptions {
+                    overwrite: true,
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
 
-        backend.create_directory(&make_path(&backend, "/subdir")).await.unwrap();
+        backend
+            .create_directory(&make_path(&backend, "/subdir"))
+            .await
+            .unwrap();
 
         // List root
         let listing = backend
@@ -382,10 +444,16 @@ mod tests {
         let backend = make_backend(&tmp);
         let path = make_path(&backend, "/to_delete.txt");
 
-        backend.write_file(&path, Bytes::from("delete me"), &WriteOptions::default()).await.unwrap();
+        backend
+            .write_file(&path, Bytes::from("delete me"), &WriteOptions::default())
+            .await
+            .unwrap();
 
         // Delete
-        backend.delete(&path, &DeleteOptions::default()).await.unwrap();
+        backend
+            .delete(&path, &DeleteOptions::default())
+            .await
+            .unwrap();
 
         // Should not exist now
         let result = backend.get_metadata(&path).await;
@@ -403,7 +471,10 @@ mod tests {
         assert!(matches!(result, Err(CfkError::NotFound(_))));
 
         // With force - should succeed
-        let options = DeleteOptions { force: true, ..Default::default() };
+        let options = DeleteOptions {
+            force: true,
+            ..Default::default()
+        };
         backend.delete(&path, &options).await.unwrap();
     }
 
@@ -414,15 +485,28 @@ mod tests {
         let src = make_path(&backend, "/original.txt");
         let dst = make_path(&backend, "/copied.txt");
 
-        backend.write_file(&src, Bytes::from("original content"), &WriteOptions::default()).await.unwrap();
+        backend
+            .write_file(
+                &src,
+                Bytes::from("original content"),
+                &WriteOptions::default(),
+            )
+            .await
+            .unwrap();
 
         // Copy
-        let entry = backend.copy(&src, &dst, &CopyOptions::default()).await.unwrap();
+        let entry = backend
+            .copy(&src, &dst, &CopyOptions::default())
+            .await
+            .unwrap();
         assert!(entry.is_file());
         assert_eq!(entry.name(), Some("copied.txt"));
 
         // Verify content
-        let mut stream = backend.read_file(&dst, &ReadOptions::default()).await.unwrap();
+        let mut stream = backend
+            .read_file(&dst, &ReadOptions::default())
+            .await
+            .unwrap();
         let mut content = Vec::new();
         while let Some(chunk) = stream.next().await {
             content.extend_from_slice(&chunk.unwrap());
@@ -437,10 +521,16 @@ mod tests {
         let src = make_path(&backend, "/old_name.txt");
         let dst = make_path(&backend, "/new_name.txt");
 
-        backend.write_file(&src, Bytes::from("content"), &WriteOptions::default()).await.unwrap();
+        backend
+            .write_file(&src, Bytes::from("content"), &WriteOptions::default())
+            .await
+            .unwrap();
 
         // Rename
-        let entry = backend.rename(&src, &dst, &MoveOptions::default()).await.unwrap();
+        let entry = backend
+            .rename(&src, &dst, &MoveOptions::default())
+            .await
+            .unwrap();
         assert!(entry.is_file());
         assert_eq!(entry.name(), Some("new_name.txt"));
 
@@ -455,10 +545,16 @@ mod tests {
         let backend = make_backend(&tmp);
         let path = make_path(&backend, "/ranged.txt");
 
-        backend.write_file(&path, Bytes::from("0123456789"), &WriteOptions::default()).await.unwrap();
+        backend
+            .write_file(&path, Bytes::from("0123456789"), &WriteOptions::default())
+            .await
+            .unwrap();
 
         // Read range 3-7 (bytes 3, 4, 5, 6)
-        let options = ReadOptions { range: Some((3, 7)), ..Default::default() };
+        let options = ReadOptions {
+            range: Some((3, 7)),
+            ..Default::default()
+        };
         let mut stream = backend.read_file(&path, &options).await.unwrap();
         let mut content = Vec::new();
         while let Some(chunk) = stream.next().await {
@@ -474,7 +570,10 @@ mod tests {
         let path = make_path(&backend, "/meta_test.txt");
 
         let content = "Test content for metadata";
-        backend.write_file(&path, Bytes::from(content), &WriteOptions::default()).await.unwrap();
+        backend
+            .write_file(&path, Bytes::from(content), &WriteOptions::default())
+            .await
+            .unwrap();
 
         let entry = backend.get_metadata(&path).await.unwrap();
         assert!(entry.is_file());

@@ -91,7 +91,7 @@ impl Default for NfsConfig {
             export: "/".to_string(),
             version: NfsVersion::V4,
             auth: NfsAuth::default(),
-            rsize: 1048576,  // 1MB
+            rsize: 1048576, // 1MB
             wsize: 1048576,
             tcp: true,
             port: 2049,
@@ -174,14 +174,12 @@ impl NfsBackend {
             return Ok(()); // Already mounted
         }
 
-        let mount_dir = std::env::temp_dir().join(format!(
-            "cfk_nfs_{}_{}", self.id, std::process::id()
-        ));
+        let mount_dir =
+            std::env::temp_dir().join(format!("cfk_nfs_{}_{}", self.id, std::process::id()));
 
         // Create mount point directory
-        std::fs::create_dir_all(&mount_dir).map_err(|e| {
-            CfkError::Other(format!("Failed to create mount point: {}", e))
-        })?;
+        std::fs::create_dir_all(&mount_dir)
+            .map_err(|e| CfkError::Other(format!("Failed to create mount point: {}", e)))?;
 
         self.mount_system(&mount_dir)?;
         self.mount_point = Some(mount_dir);
@@ -208,12 +206,12 @@ impl NfsBackend {
 
     /// Get the current mount point, returning an error if not mounted.
     fn get_mount_point(&self) -> CfkResult<&Path> {
-        self.mount_point.as_deref().ok_or_else(|| {
-            CfkError::ProviderApi {
+        self.mount_point
+            .as_deref()
+            .ok_or_else(|| CfkError::ProviderApi {
                 provider: "nfs".into(),
                 message: "NFS export is not mounted. Call mount() first.".into(),
-            }
-        })
+            })
     }
 
     /// Convert a VirtualPath to the real local path on the mount point.
@@ -255,7 +253,11 @@ impl NfsBackend {
             metadata.created = Some(created.into());
         }
 
-        Ok(Entry { path: vpath.clone(), kind, metadata })
+        Ok(Entry {
+            path: vpath.clone(),
+            kind,
+            metadata,
+        })
     }
 
     /// Convert VirtualPath to NFS path components
@@ -294,7 +296,11 @@ impl StorageBackend for NfsBackend {
         self.entry_from_path(&real, path).await
     }
 
-    async fn list_directory(&self, path: &VirtualPath, _options: &ListOptions) -> CfkResult<DirectoryListing> {
+    async fn list_directory(
+        &self,
+        path: &VirtualPath,
+        _options: &ListOptions,
+    ) -> CfkResult<DirectoryListing> {
         let real = self.to_real_path(path)?;
         if !real.is_dir() {
             return Err(CfkError::NotADirectory(path.to_string()));
@@ -338,7 +344,12 @@ impl StorageBackend for NfsBackend {
         Ok(Box::pin(futures::stream::once(async { Ok(bytes) })))
     }
 
-    async fn write_file(&self, path: &VirtualPath, data: Bytes, options: &WriteOptions) -> CfkResult<Entry> {
+    async fn write_file(
+        &self,
+        path: &VirtualPath,
+        data: Bytes,
+        options: &WriteOptions,
+    ) -> CfkResult<Entry> {
         let real = self.to_real_path(path)?;
 
         if real.exists() && !options.overwrite {
@@ -355,7 +366,13 @@ impl StorageBackend for NfsBackend {
         self.get_metadata(path).await
     }
 
-    async fn write_file_stream(&self, path: &VirtualPath, mut stream: ByteStream, _size_hint: Option<u64>, options: &WriteOptions) -> CfkResult<Entry> {
+    async fn write_file_stream(
+        &self,
+        path: &VirtualPath,
+        mut stream: ByteStream,
+        _size_hint: Option<u64>,
+        options: &WriteOptions,
+    ) -> CfkResult<Entry> {
         use futures::StreamExt;
 
         let mut data = Vec::new();
@@ -393,12 +410,24 @@ impl StorageBackend for NfsBackend {
         self.get_metadata(path).await
     }
 
-    async fn copy(&self, _from: &VirtualPath, _to: &VirtualPath, _options: &CopyOptions) -> CfkResult<Entry> {
+    async fn copy(
+        &self,
+        _from: &VirtualPath,
+        _to: &VirtualPath,
+        _options: &CopyOptions,
+    ) -> CfkResult<Entry> {
         // NFS doesn't have native copy (until NFSv4.2 COPY operation)
-        Err(CfkError::Unsupported("NFS doesn't support native copy".into()))
+        Err(CfkError::Unsupported(
+            "NFS doesn't support native copy".into(),
+        ))
     }
 
-    async fn rename(&self, from: &VirtualPath, to: &VirtualPath, options: &MoveOptions) -> CfkResult<Entry> {
+    async fn rename(
+        &self,
+        from: &VirtualPath,
+        to: &VirtualPath,
+        options: &MoveOptions,
+    ) -> CfkResult<Entry> {
         let src_real = self.to_real_path(from)?;
         let dst_real = self.to_real_path(to)?;
 
@@ -525,10 +554,8 @@ impl NfsAttributes {
         metadata.permissions = Some(Permissions::new(self.mode));
 
         if self.mtime_sec > 0 {
-            metadata.modified = chrono::DateTime::from_timestamp(
-                self.mtime_sec as i64,
-                self.mtime_nsec,
-            );
+            metadata.modified =
+                chrono::DateTime::from_timestamp(self.mtime_sec as i64, self.mtime_nsec);
         }
 
         Entry {
@@ -552,8 +579,10 @@ impl NfsBackend {
 
         let status = Command::new("mount")
             .args([
-                "-t", "nfs",
-                "-o", &format!("vers={}", version),
+                "-t",
+                "nfs",
+                "-o",
+                &format!("vers={}", version),
                 &source,
                 mount_point.to_str().unwrap_or("/mnt"),
             ])

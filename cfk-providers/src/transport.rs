@@ -80,10 +80,12 @@ impl TcpConnection {
     /// Establish a new TCP connection to the configured address.
     pub async fn connect(config: ConnectionConfig) -> CfkResult<Self> {
         let addr = format!("{}:{}", config.addr, config.port);
-        let stream = TcpStream::connect(&addr).await
+        let stream = TcpStream::connect(&addr)
+            .await
             .map_err(|e| CfkError::Network(e.to_string()))?;
 
-        stream.set_nodelay(config.nodelay)
+        stream
+            .set_nodelay(config.nodelay)
             .map_err(|e| CfkError::Network(e.to_string()))?;
 
         Ok(Self { stream, config })
@@ -147,19 +149,25 @@ impl QuicConnection {
     ///
     /// This uses a basic UDP socket with application-level framing.
     /// For production use, integrate the `quinn` crate instead.
-    pub async fn connect(addr: SocketAddr, _server_name: &str, config: QuicConfig) -> CfkResult<Self> {
+    pub async fn connect(
+        addr: SocketAddr,
+        _server_name: &str,
+        config: QuicConfig,
+    ) -> CfkResult<Self> {
         debug!(addr = %addr, "Connecting via simplified QUIC transport");
 
         let local_addr: SocketAddr = "0.0.0.0:0".parse().unwrap();
         let socket = std::net::UdpSocket::bind(local_addr)
             .map_err(|e| CfkError::Network(format!("Failed to bind UDP socket: {}", e)))?;
 
-        socket.connect(addr)
+        socket
+            .connect(addr)
             .map_err(|e| CfkError::Network(format!("Failed to connect UDP socket: {}", e)))?;
 
         // Set read timeout based on config idle timeout
         let timeout = std::time::Duration::from_millis(config.max_idle_timeout_ms);
-        socket.set_read_timeout(Some(timeout))
+        socket
+            .set_read_timeout(Some(timeout))
             .map_err(|e| CfkError::Network(format!("Failed to set timeout: {}", e)))?;
 
         Ok(Self {
@@ -176,7 +184,9 @@ impl QuicConnection {
     /// framed message exchange over the single UDP socket.
     pub async fn open_stream(&self) -> CfkResult<QuicStream> {
         Ok(QuicStream {
-            socket_fd: self.socket.try_clone()
+            socket_fd: self
+                .socket
+                .try_clone()
                 .map_err(|e| CfkError::Network(format!("Failed to clone socket: {}", e)))?,
             peer_addr: self.peer_addr,
         })
@@ -192,7 +202,8 @@ impl QuicConnection {
         frame.extend_from_slice(data);
         self.next_seq += 1;
 
-        self.socket.send(&frame)
+        self.socket
+            .send(&frame)
             .map_err(|e| CfkError::Network(format!("QUIC send failed: {}", e)))
     }
 
@@ -201,7 +212,9 @@ impl QuicConnection {
     /// Returns the payload after stripping the sequence number header.
     pub fn recv(&self, buf: &mut [u8]) -> CfkResult<(u64, usize)> {
         let mut frame = vec![0u8; 8 + buf.len()];
-        let n = self.socket.recv(&mut frame)
+        let n = self
+            .socket
+            .recv(&mut frame)
             .map_err(|e| CfkError::Network(format!("QUIC recv failed: {}", e)))?;
 
         if n < 8 {
@@ -230,13 +243,15 @@ pub struct QuicStream {
 impl QuicStream {
     /// Send data on this stream.
     pub fn send(&self, data: &[u8]) -> CfkResult<usize> {
-        self.socket_fd.send(data)
+        self.socket_fd
+            .send(data)
             .map_err(|e| CfkError::Network(format!("Stream send failed: {}", e)))
     }
 
     /// Receive data from this stream.
     pub fn recv(&self, buf: &mut [u8]) -> CfkResult<usize> {
-        self.socket_fd.recv(buf)
+        self.socket_fd
+            .recv(buf)
             .map_err(|e| CfkError::Network(format!("Stream recv failed: {}", e)))
     }
 }
@@ -253,7 +268,10 @@ pub struct MultiTransport {
 impl MultiTransport {
     /// Create a new multi-transport connector with the given preferred protocol.
     pub fn new(preferred: Transport) -> Self {
-        Self { preferred, fallback: None }
+        Self {
+            preferred,
+            fallback: None,
+        }
     }
 
     /// Set a fallback transport to try if the preferred one fails.
@@ -303,7 +321,10 @@ impl MultiTransport {
                     }
                 }
             }
-            _ => Err(CfkError::Unsupported(format!("{:?} not implemented", self.preferred))),
+            _ => Err(CfkError::Unsupported(format!(
+                "{:?} not implemented",
+                self.preferred
+            ))),
         }
     }
 }
@@ -358,7 +379,7 @@ pub mod multicast {
     impl Default for MulticastGroup {
         fn default() -> Self {
             Self {
-                group_addr: Ipv4Addr::new(239, 255, 0, 1),  // Local scope
+                group_addr: Ipv4Addr::new(239, 255, 0, 1), // Local scope
                 port: 5000,
                 interface: None,
                 ttl: 1,
@@ -384,7 +405,7 @@ pub mod multicast {
         fn default() -> Self {
             Self {
                 group: MulticastGroup::default(),
-                rate_limit_kbps: 10000,  // 10 Mbps
+                rate_limit_kbps: 10000, // 10 Mbps
                 window_size: 1024,
                 nak_rdata_ivl_ms: 200,
             }
@@ -411,7 +432,7 @@ pub mod multicast {
             Self {
                 group: MulticastGroup::default(),
                 rate_kbps: 10000,
-                buffer_size: 1048576,  // 1MB
+                buffer_size: 1048576, // 1MB
                 segment_size: 1400,
                 fec_enabled: true,
             }
@@ -426,13 +447,16 @@ pub mod multicast {
 
         let iface = group.interface.unwrap_or(Ipv4Addr::UNSPECIFIED);
 
-        socket.join_multicast_v4(&group.group_addr, &iface)
+        socket
+            .join_multicast_v4(&group.group_addr, &iface)
             .map_err(|e| CfkError::Network(format!("Failed to join multicast group: {}", e)))?;
 
-        socket.set_multicast_ttl_v4(group.ttl as u32)
+        socket
+            .set_multicast_ttl_v4(group.ttl as u32)
             .map_err(|e| CfkError::Network(format!("Failed to set multicast TTL: {}", e)))?;
 
-        socket.set_multicast_loop_v4(group.loopback)
+        socket
+            .set_multicast_loop_v4(group.loopback)
             .map_err(|e| CfkError::Network(format!("Failed to set multicast loopback: {}", e)))?;
 
         Ok(socket)
@@ -496,7 +520,8 @@ pub mod multicast {
 
         /// Send data to all group members.
         pub async fn send(&self, data: &[u8]) -> CfkResult<()> {
-            self.socket.send_to(data, self.dest_addr)
+            self.socket
+                .send_to(data, self.dest_addr)
                 .map_err(|e| CfkError::Network(format!("Multicast send failed: {}", e)))?;
             Ok(())
         }
@@ -519,10 +544,9 @@ pub mod multicast {
     impl Drop for MulticastSender {
         fn drop(&mut self) {
             // Best-effort leave — ignore errors on cleanup
-            let _ = self.socket.leave_multicast_v4(
-                &self.dest_addr.ip().clone(),
-                &Ipv4Addr::UNSPECIFIED,
-            );
+            let _ = self
+                .socket
+                .leave_multicast_v4(&self.dest_addr.ip().clone(), &Ipv4Addr::UNSPECIFIED);
         }
     }
 
@@ -575,7 +599,9 @@ pub mod multicast {
         /// Blocks until data is available or the socket times out.
         pub async fn recv(&self) -> CfkResult<Vec<u8>> {
             let mut buf = vec![0u8; 65536];
-            let (n, _src) = self.socket.recv_from(&mut buf)
+            let (n, _src) = self
+                .socket
+                .recv_from(&mut buf)
                 .map_err(|e| CfkError::Network(format!("Multicast recv failed: {}", e)))?;
             buf.truncate(n);
             Ok(buf)
@@ -584,10 +610,9 @@ pub mod multicast {
 
     impl Drop for MulticastReceiver {
         fn drop(&mut self) {
-            let _ = self.socket.leave_multicast_v4(
-                &self.group_addr,
-                &Ipv4Addr::UNSPECIFIED,
-            );
+            let _ = self
+                .socket
+                .leave_multicast_v4(&self.group_addr, &Ipv4Addr::UNSPECIFIED);
         }
     }
 }

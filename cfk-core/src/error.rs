@@ -110,7 +110,10 @@ mod tests {
     #[test]
     fn test_is_retryable() {
         assert!(CfkError::Network("connection reset".into()).is_retryable());
-        assert!(CfkError::RateLimited { retry_after_secs: Some(30) }.is_retryable());
+        assert!(CfkError::RateLimited {
+            retry_after_secs: Some(30)
+        }
+        .is_retryable());
         assert!(CfkError::Timeout.is_retryable());
         assert!(CfkError::TokenExpired.is_retryable());
 
@@ -134,7 +137,9 @@ mod tests {
         let err = CfkError::NotFound("/path/to/file".into());
         assert_eq!(format!("{}", err), "Path not found: /path/to/file");
 
-        let err = CfkError::RateLimited { retry_after_secs: Some(60) };
+        let err = CfkError::RateLimited {
+            retry_after_secs: Some(60),
+        };
         assert!(format!("{}", err).contains("60"));
     }
 

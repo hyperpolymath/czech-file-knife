@@ -17,11 +17,11 @@ static MANAGER: OnceCell<Arc<FileProviderManager>> = OnceCell::new();
 
 /// Initialize the FFI layer
 fn get_manager() -> Result<&'static Arc<FileProviderManager>, FfiError> {
-    MANAGER
-        .get()
-        .ok_or_else(|| FfiError::from_error(&crate::error::IosError::Ffi(
+    MANAGER.get().ok_or_else(|| {
+        FfiError::from_error(&crate::error::IosError::Ffi(
             "Manager not initialized".into(),
-        )))
+        ))
+    })
 }
 
 // --- Initialization ---
@@ -255,10 +255,7 @@ pub unsafe extern "C" fn cfk_item_free(item: *mut CfkItem) {
 /// The identifier must be a valid null-terminated UTF-8 string.
 /// The caller must free the returned item with cfk_item_free.
 #[no_mangle]
-pub unsafe extern "C" fn cfk_item_get(
-    identifier: *const c_char,
-    out_item: *mut CfkItem,
-) -> i32 {
+pub unsafe extern "C" fn cfk_item_get(identifier: *const c_char, out_item: *mut CfkItem) -> i32 {
     let manager = match get_manager() {
         Ok(m) => m,
         Err(_) => return FileProviderErrorCode::Unknown as i32,

@@ -76,7 +76,11 @@ impl WebDavBackend {
     /// Build authenticated request
     async fn request(&self, method: Method, path: &str) -> reqwest::RequestBuilder {
         let config = self.config.read().await;
-        let url = format!("{}/{}", config.base_url.trim_end_matches('/'), path.trim_start_matches('/'));
+        let url = format!(
+            "{}/{}",
+            config.base_url.trim_end_matches('/'),
+            path.trim_start_matches('/')
+        );
 
         let mut request = self.http.request(method, &url);
 
@@ -186,7 +190,9 @@ fn parse_multistatus(xml: &str) -> CfkResult<Vec<DavResponse>> {
         } else if let Some(ref mut resp) = current {
             // Parse href
             if let Some(href) = extract_tag_content(line, "href") {
-                resp.href = urlencoding::decode(&href).unwrap_or(href.into()).to_string();
+                resp.href = urlencoding::decode(&href)
+                    .unwrap_or(href.into())
+                    .to_string();
             }
 
             // Parse resourcetype
@@ -591,10 +597,7 @@ impl WebDavBackend {
         username: &str,
         password: &str,
     ) -> Self {
-        let base_url = format!(
-            "{}/remote.php/webdav",
-            server_url.trim_end_matches('/')
-        );
+        let base_url = format!("{}/remote.php/webdav", server_url.trim_end_matches('/'));
 
         Self::new(
             id,

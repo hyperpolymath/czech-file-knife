@@ -154,8 +154,14 @@ impl S3Backend {
             )
         } else {
             // Virtual-hosted style
-            let endpoint = config.endpoint.replace("://", &format!("://{}.bucket.", config.bucket));
-            format!("{}/{}", endpoint.trim_end_matches('/'), key.trim_start_matches('/'))
+            let endpoint = config
+                .endpoint
+                .replace("://", &format!("://{}.bucket.", config.bucket));
+            format!(
+                "{}/{}",
+                endpoint.trim_end_matches('/'),
+                key.trim_start_matches('/')
+            )
         }
     }
 
@@ -170,7 +176,9 @@ impl S3Backend {
                 config.bucket
             )
         } else {
-            config.endpoint.replace("://", &format!("://{}.bucket.", config.bucket))
+            config
+                .endpoint
+                .replace("://", &format!("://{}.bucket.", config.bucket))
         }
     }
 
@@ -265,7 +273,9 @@ impl S3Backend {
         };
 
         let mut headers = BTreeMap::new();
-        let auth = self.sign_request(&method, &url, &mut headers, &payload_hash).await?;
+        let auth = self
+            .sign_request(&method, &url, &mut headers, &payload_hash)
+            .await?;
 
         let mut request = self.http.request(method, &url);
 
@@ -308,7 +318,9 @@ impl S3Backend {
 
         let payload_hash = sha256_hex(b"");
         let mut headers = BTreeMap::new();
-        let auth = self.sign_request(&Method::GET, &url, &mut headers, &payload_hash).await?;
+        let auth = self
+            .sign_request(&Method::GET, &url, &mut headers, &payload_hash)
+            .await?;
 
         let mut request = self.http.get(&url);
         for (k, v) in &headers {
@@ -330,7 +342,10 @@ impl S3Backend {
             });
         }
 
-        let text = response.text().await.map_err(|e| CfkError::Network(e.to_string()))?;
+        let text = response
+            .text()
+            .await
+            .map_err(|e| CfkError::Network(e.to_string()))?;
         parse_list_objects_v2(&text)
     }
 
@@ -672,7 +687,9 @@ impl StorageBackend for S3Backend {
         let mut headers = BTreeMap::new();
         headers.insert("x-amz-copy-source".to_string(), copy_source);
 
-        let auth = self.sign_request(&Method::PUT, &url, &mut headers, &payload_hash).await?;
+        let auth = self
+            .sign_request(&Method::PUT, &url, &mut headers, &payload_hash)
+            .await?;
 
         let mut request = self.http.put(&url);
         for (k, v) in &headers {
