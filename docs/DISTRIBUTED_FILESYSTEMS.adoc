@@ -37,14 +37,17 @@ let backend = NfsBackend::new("my-nfs", config);
 
 [source,rust]
 ----
-use cfk_providers::smb::{SmbBackend, SmbConfig, SmbVersion};
+use cfk_providers::smb::{SmbAuth, SmbBackend, SmbConfig, SmbVersion};
 
 let config = SmbConfig {
     server: "fileserver".into(),
     share: "Documents".into(),
-    username: Some("user".into()),
-    password: std::env::var("SMB_PASSWORD").ok(),
     version: SmbVersion::Smb3,
+    auth: SmbAuth::Ntlm {
+        username: "user".into(),
+        password: std::env::var("SMB_PASSWORD")?,
+        domain: None,
+    },
     ..Default::default()
 };
 
