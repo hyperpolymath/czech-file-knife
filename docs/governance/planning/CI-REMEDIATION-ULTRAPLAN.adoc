@@ -186,9 +186,11 @@ documents (see the caveat above):
 | `sonarqube.yml` | `SonarSource/sonarqube-scan-action@v8.3.0` | `sonarsource/...@v8.2.2`
 |===
 
-Each row is both a clause-1 violation (uses not locked) and a clause-2
-violation (locked entry orphaned). Clause 3, transitive closure, is clean:
-35 workflow entries, 35 dependency records, no dangling edges.
+The four rows represent four clause-1 violations (uses not locked) and
+three unique clause-2 violations (orphaned locked entries). The two
+`codeql.yml` rows share the same orphaned root entry. Clause 3, transitive
+closure, is clean: 35 workflow entries, 35 dependency records, no dangling
+edges.
 
 The `sonarqube.yml` row is PR #2, merged 2026-10-05: Dependabot rewrote the
 `uses:` ref and structurally cannot touch the lockfile. That is precisely the
