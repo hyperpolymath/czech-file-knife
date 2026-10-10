@@ -270,7 +270,6 @@ your own repo - but do not read their emptiness as neglect here.
 | `docs/governance/maintenance/adaptive/`
 | `docs/governance/maintenance/corrective/`
 | `docs/governance/maintenance/perfective/`
-| `docs/governance/planning/`
 | `docs/governance/planning/could/`
 | `docs/governance/planning/must/`
 | `docs/governance/planning/should/`

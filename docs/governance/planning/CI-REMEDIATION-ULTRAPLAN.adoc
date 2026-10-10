@@ -1,0 +1,667 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= CI Remediation Ultraplan - czech-file-knife
+:toc: macro
+:toc-placement!:
+:icons: font
+
+Remediation plan for the seven red checks on `main`, produced 2026-10-10 by
+deep recon of this repository against `hyperpolymath/standards` and
+`hyperpolymath/rsr-template-repo`. It answers issue #5 and adds four findings
+issue #5 does not carry.
+
+toc::[]
+
+== Scope, and how this was produced
+
+Every claim below was produced by a command run in this checkout, against
+`main` at `68b2930f`. Nothing here is inferred from a status document. The
+three canon repositories were read at:
+
+[cols="1,2", options="header"]
+|===
+| Source | Pinned at
+| this repo `main` | `68b2930fd957c673f09597b413fc6110383428c1`
+| `hyperpolymath/standards` `main` | clone, 2026-10-10
+| `hyperpolymath/rsr-template-repo` `main` | `df09a6c50c4c77e93abac0fdf162509bf5648611`
+| `hyperpolymath/cicd-suite` `main` | clone, 2026-10-10
+|===
+
+What could *not* be run here, stated plainly rather than papered over:
+
+* **GitHub Actions job logs.** `gh run view --log-failed` returns `EOF` on the
+  log-download host, which this sandbox cannot reach. Each failing check was
+  therefore reproduced locally from its own definition instead.
+* **The Rust build.** There is no `cargo` or `rustc` here and the toolchain
+  host is unreachable, so every compile-level claim (F8, F9) is read from
+  source and Cargo manifests, *not* from a compiler. They are marked
+  unverified-by-compilation and must be re-run on a machine with the toolchain.
+* **`scripts/check-lock-sync.sh` itself.** The script fails closed without
+  gawk, and gawk cannot be installed here. Its three documented clauses were
+  re-implemented in Python to obtain the concrete drift list; that
+  re-implementation is a diagnostic, not the shipping gate, and the gate must
+  be run on the PR before the finding is called closed.
+* **The code-scanning alerts API.** `gh api code-scanning/alerts` returns 403
+  `Resource not accessible by integration`. Alert numbers #33 to #35 are taken
+  from issue #5; their *content* was verified against source instead.
+
+== The single root cause
+
+*This repository was never instantiated.* It was landed from ambientops by
+PR #3 as a byte copy of the template scaffold, and `just repo-init` was never
+run to completion. That one omission explains five of the seven red checks
+directly, and makes a sixth unsatisfiable.
+
+The evidence is not subtle:
+
+....
+$ bash scripts/check-no-placeholders.sh .
+FAIL: 90 file(s) contain unfilled {{PLACEHOLDER}} tokens
+....
+
+Ninety tracked files still carry mint-time tokens. Among them
+`.github/CODEOWNERS`, whose only assignment rule is `* @` followed by the
+unfilled OWNER token - so it assigns nothing to anybody; `CITATION.cff`; the
+whole of `www/.well-known/` including `security.txt`;
+`docs/AFFIRMATION.adoc`; `.machine_readable/compliance/reuse/dep5`; the three
+agent rule files `.clinerules`, `.cursorrules` and `.windsurfrules`; and the
+repo deed.
+
+And the repo still believes it *is* the template. `CLAUDE.md` opens its
+generated region with:
+
+....
+# This repo: `rsr-template-repo`  .  clade `rm-rsr-template-repo`
+- Identity - uuid a5ea1382-a34c-5334-8a46-a2ebe904c810
+- IS - Canonical RSR-compliant repository template
+....
+
+The deed carries the same mistake, and the template's own comment says why it
+matters:
+
+____
+Before that swap existed every minted repo inherited this block's uuid and
+canonical-name and told arriving agents it WAS the template.
+____
+
+That is doctrine #12 (boundaries are real) violated by inheritance rather than
+by intent. Every arriving agent in this repo has been told, by the file the
+estate tells agents to read first, that it is somewhere else.
+
+== Finding register
+
+=== F1 - The mint was never completed (90 placeholder files)
+
+*Evidence:* `bash scripts/check-no-placeholders.sh .` exits 1, 90 files.
+*Gates:* `openssf-compliance` (step "Check no unfilled placeholder tokens"),
+`call-estate-audit / estate-audit` (Required Files Gate).
+*Why the estate audit cannot excuse it:* cicd-suite's Required Files Gate has
+a `TEMPLATE_MODE` that forgives placeholders, switched on by
+
+....
+case "${REPO_NAME##*/}" in
+  *-template|*-template-repo) TEMPLATE_MODE=1 ;;
+esac
+....
+
+`czech-file-knife` does not match, so the gate judges it as an instantiated
+repo - correctly. The placeholders are the defect, not a false positive.
+
+=== F2 - The repository identity is still the template's
+
+*Evidence:* `CLAUDE.md` arrival-pack region; `rsr-template-repo_chora.deed`
+carries `:canonical-name "rsr-template-repo"`,
+`:repo-uuid #u5"github.com/hyperpolymath/rsr-template-repo"` and
+`:project "[YOUR-REPO-NAME]"`.
+*Gates:* none today. That is the problem: nothing fails, so nothing got fixed.
+*Doctrine:* #12 boundaries are real; #10 report faithfully.
+
+=== F3 - The deed is two template generations stale
+
+*Evidence:* diffing this repo's deed against
+`rsr-template-repo@df09a6c5/rsr-template-repo_chora.deed` yields 958 diff
+lines. This repo's copy predates the #209 field translation and the #215 canon
+move: it has **no `(canon)` clause at all**, and no `(identity)`, `(clade)` or
+`(forges)` clauses.
+*Gates:* `Canon lockstep` has nowhere to read a pin from.
+*Upstream gap worth reporting:* `Validate DEED manifests` is GREEN on a deed
+that is missing the clause canon.lock names as the pin's home. `deed_canon`
+is documented as refusing "zero or two" - so either that check is not wired
+into the validating workflow, or it is wired only in the template.
+
+=== F4 - `Canon lockstep` fails for two independent reasons
+
+**(a) Structural, and estate-wide.** The job in `.github/workflows/dogfood-gate.yml`
+fetches the pin from a hard-coded *other* repository:
+
+....
+URL="https://raw.githubusercontent.com/hyperpolymath/rsr-template-repo/${HEAD_SHA}/${p}"
+....
+
+`HEAD_SHA` here is `68b2930f`, which does not exist in that repository:
+
+....
+$ gh api repos/hyperpolymath/rsr-template-repo/commits/68b2930f...
+HTTP 422: No commit found for SHA
+....
+
+Worse, the file it asks for is gone: `rsr-template-repo@main`'s
+`.machine_readable/` listing contains **no `rsr-profile.a2ml`**. The canon pin
+moved into the deed's `(canon)` clause under #215. So this job cannot pass in
+*any* repository, including the template that ships it. This is not a
+czech-file-knife defect.
+
+**(b) Data, and local.** Running the job's own awk and grep readers against
+both sides:
+
+[cols="1,2,2,1", options="header"]
+|===
+| Pin | canon.lock asserts | this repo declares | Verdict
+| `version` | 2.1.2 | 2.1.1 | MISMATCH
+| `criteria_sha256` | 6a5aa885... | 6a5aa885... | match
+| `gates_sha256` | e70efd2f... | e70efd2f... | match
+|===
+
+One patch version behind; the two hashes agree. Issue #5's guess ("re-sync the
+canon pin") is right about (b) and wrong about the mechanism - (a) has to be
+fixed first or the check stays red whatever the pin says.
+
+**Upstream oddity to raise:** `canon.lock` at `standards@main` declares
+`version = "2.1.2"` with `status = "draft"` and
+`commit = "0000000000000000000000000000000000000000"   # <- fill at release`.
+A released version whose realising commit is still zeroes is a pin no one can
+check out.
+
+=== F5 - `actions.lock` is out of sync: three workflows, seven defects
+
+Reproduced by re-implementing the three clauses `scripts/check-lock-sync.sh`
+documents (see the caveat above):
+
+[cols="1,2,2", options="header"]
+|===
+| Workflow | YAML says | lockfile says
+| `codeql.yml` | `github/codeql-action/init@2892aa5e...` | root `github/codeql-action@b96794f0...`
+| `codeql.yml` | `github/codeql-action/analyze@2892aa5e...` | root `github/codeql-action@b96794f0...`
+| `pages.yml` | `haskell-actions/setup@v2.12.1` | `haskell-actions/setup@v2.12.0`
+| `sonarqube.yml` | `SonarSource/sonarqube-scan-action@v8.3.0` | `sonarsource/...@v8.2.2`
+|===
+
+Each row is both a clause-1 violation (uses not locked) and a clause-2
+violation (locked entry orphaned). Clause 3, transitive closure, is clean:
+35 workflow entries, 35 dependency records, no dangling edges.
+
+The `sonarqube.yml` row is PR #2, merged 2026-10-05: Dependabot rewrote the
+`uses:` ref and structurally cannot touch the lockfile. That is precisely the
+failure mode `lock-sync-gate.yml` was written for, and it means the gate is
+working - the drift is real.
+
+*Gates:* `actions.lock is in sync with the workflow YAML`,
+`governance / Actions lockfile verify`.
+
+=== F6 - `scorecard / Run Scorecard` shares F5's cause
+
+This check is **not in issue #5's list** and is a red on `main` that issue #5
+does not record (run 38022792964, later than the `f34683fd` head issue #5
+describes). Its cause is the lockfile: `scorecard-reusable.yml`'s
+"Reconcile native action pins" step exits 3 when "at least one workflow failed
+native action-lock verification", and the final step
+"Fail if reconciliation did not succeed" turns that into a job failure.
+
+*Consequence:* one lockfile refresh should clear **three** red checks at once.
+That is the cheapest win available and it is why WP1 leads the sequence.
+
+=== F7 - Swift in `cfk-ios/swift/` violates the language policy, and the policy has a hole
+
+*Evidence:* two tracked files, `cfk-ios/swift/CfkFileProviderExtension.swift`
+and `cfk-ios/swift/CfkFileProviderItem.swift`. The gate runs
+`SWIFT_FILES=$(git ls-files '*.swift')` with no platform carve-out - the only
+carve-out in that step is Java under `android/**/src/**`. `LANGUAGE-POLICY.adoc`
+bans Swift with replacement Tauri/Dioxus and rationale "Platform lock-in",
+under a heading that says "No exceptions for Kotlin/Swift."
+
+*The tension is real, not a repo mistake.* An iOS File Provider extension is a
+target Apple only lets you build as an app extension in Swift or Objective-C.
+Tauri and Dioxus cannot produce one. The canon therefore forbids something the
+platform requires, and the Android/Java carve-out is the precedent for how the
+estate resolved exactly this shape before.
+
+*Exemption mechanisms available here:* `.hypatia-ignore` exists;
+`.hypatia-baseline.json` does not. Either can silence the check locally.
+
+*Recommendation - the elegant arm, labelled per doctrine #15:* do **not**
+silence it locally. A local exemption leaves the canon asserting something
+false, and the next repo with a File Provider extension rediscovers the
+problem. Take the ruling upstream as an Apple-platform-shim carve-out
+paralleling the Android/Java one: Swift permitted under `*-ios/swift/**`, each
+file a minimal delegating shim into the Rust core, LoC-capped as the Android
+rule is. This repo's `cfk-ios` crate is already the Rust side of that seam,
+which is what makes the carve-out defensible rather than a loophole.
+
+=== F8 - Seven `unwrap()` calls on user-influenced paths
+
+Read from source (compilation unverified, see scope):
+
+[cols="1,2,1,2", options="header"]
+|===
+| File | Line | Count | Expression
+| `cfk-integrations/src/agrep.rs` | 80 | 1 | `dir.to_str().unwrap()`
+| `cfk-integrations/src/aria2.rs` | 26 | 1 | `output.parent().unwrap_or(...).to_str().unwrap()`
+| `cfk-integrations/src/aria2.rs` | 28 | 2 | `output.file_name().unwrap().to_str().unwrap()`
+| `cfk-integrations/src/aria2.rs` | 54 | 1 | `output_dir.to_str().unwrap()`
+| `cfk-integrations/src/pandoc.rs` | 49 | 2 | `input.to_str().unwrap()`, `output.to_str().unwrap()`
+|===
+
+Total 7, split agrep 1, aria2 4, pandoc 2 - matching issue #5's counts
+exactly, which corroborates its claim that these are alerts #33 to #35 moved
+by `cargo fmt` rather than new findings.
+
+`Path::to_str` returns `None` for non-UTF-8 paths and `Path::file_name`
+returns `None` for `..` and for a path ending in `..`. Both are reachable from
+a CLI argument, so both are panics on attacker-shaped input in a tool whose
+job is to be pointed at arbitrary filesystems.
+
+=== F9 - `--features all` and `ceph` are never compiled, so green means less than it looks
+
+`rust-ci-reusable.yml` runs `cargo check --locked`, `cargo clippy --locked`
+and `cargo test --locked`. There is no `--all-features` dimension anywhere in
+it. So the green `rust-ci / Cargo check + clippy + fmt` proves the **default
+feature set only**.
+
+Outside that set, five declared features fail the build by design:
+
+[cols="1,1,2", options="header"]
+|===
+| Crate | Feature | Guard
+| `cfk-cache` | `surrealdb` | `compile_error!` - `surreal_backend.rs` never written
+| `cfk-cache` | `lmdb` | `compile_error!` - `lmdb_backend.rs` never written
+| `cfk-cache` | `dragonfly` | `compile_error!` - `dragonfly_backend.rs` never written
+| `cfk-integrations` | `ocr` | `compile_error!` - `ocr.rs` never written
+| `cfk-integrations` | `eza` | `compile_error!` - `eza.rs` never written
+|===
+
+That is the "five feature modules that were never written" issue #5 mentions.
+The `compile_error!` guards are the right call - they fail loudly rather than
+with a missing-module error - but they are excluded from both crates' `all`,
+so no gate ever tries them.
+
+Separately, `cfk-providers` declares a `ceph` feature "so
+`cfg(feature = "ceph")` is a known cfg" but keeps it out of `all` because, in
+its own Cargo.toml comment, "ceph.rs predates the current StorageBackend trait
+(32 compile errors at 2026-10-09)". A 464-line module that cannot compile and
+is exported from `lib.rs` under a feature no gate enables is dead weight that
+reads as capability.
+
+=== F10 - A2ML is retired estate-wide, and this repo's gate requires it
+
+`standards/REGISTRY.adoc`, retired 2026-10-09:
+
+____
+The verifiable spec registry, the generators that wrote it and the gates that
+checked it were retired on 2026-10-09. Nothing in this repository generates,
+reads or checks a registry any more. ... The registry was a generated A2ML
+file, and A2ML is retired (owner rulings D99, D269c, D312 and D313).
+Descriptive metadata now lives in deed clauses, k9 contracts and the k9
+coordination protocol.
+____
+
+This repo still carries 40 `.a2ml` files under `.machine_readable/`, and its
+own `ossf-best-practices.yml` *requires*
+`.machine_readable/descriptiles/STATE.a2ml` to exist. So a local gate pins a
+format the canon has retired. This is an ordering question only the owner can
+answer - which gate moves first - and it should not be guessed at locally.
+
+=== F11 - The repository has no description and no topics
+
+`gh repo view` returns `"description": ""` and `"repositoryTopics": null`, in
+an estate where 343 of 368 repositories carry `hyperpolymath` and 341 carry
+the epistemic and veridical core. Addressed by WP0 below.
+
+=== F12 - One open Dependabot advisory on the default branch
+
+Pushing to this repository returns a remote notice: `GitHub found 1
+vulnerability on hyperpolymath/czech-file-knife's default branch (1
+moderate)`, at `security/dependabot/1`. Issue #5 does not record it.
+`gh api dependabot/alerts` returns 403 `Resource not accessible by
+integration` from this session, so the package and the patched version are
+**unchecked here**. Read the advisory in the Security tab before WP1, because
+if it is a `uses:` bump it belongs in the same lockfile refresh rather than a
+separate PR that re-drifts the lock.
+
+=== F13 - What is already green, so it is not re-broken
+
+`Validate DEED manifests`, `Validate K9 contracts`, `Validate eclexiaiser
+manifest`, `estate-rules`, `RSR oracle - dogfood this repo`,
+`Deposit findings for gitbot-fleet`, `governance / Validate Hypatia
+Baseline`, `rust-ci / Cargo check + clippy + fmt`, `rust-ci / Cargo test`,
+`scan / gitleaks`, `scan / rust-secrets`, `scan / shell-secrets`,
+`Empty-linter`, `Groove manifest check`, `Dogfooding compliance summary`.
+
+The scaffold works. What is broken is the *instantiation* of it plus three pin
+and lock defects. Verified locally as passing:
+`scripts/check-root-shape.sh` (59 entries, 50 required, 13 optional),
+`scripts/check-no-md-in-docs.sh`, `scripts/check-no-vlang.sh`.
+
+== Work packages
+
+=== WP0 - Repository description and topics (MUST, blocked on permissions)
+
+Setting these returns HTTP 403 `Resource not accessible by integration` from
+this session: the GitHub App carries `contents` and `issues` but not
+`administration`. The owner runs one command.
+
+Proposed description, 264 characters, honest about maturity per doctrine #10:
+
+____
+Cloud-native Swiss File Knife: a Rust workspace that puts local, cloud,
+distributed and exotic storage behind one filesystem interface and a single
+cfk CLI. Local backend and CLI work today; cache, search, FUSE, cloud backends
+and the Ada/SPARK TUI are scaffolded.
+____
+
+Twenty topics, every one already in estate use - zero neologisms:
+
+[cols="1,2,1,4", options="header"]
+|===
+| # | Topic | Repos | Why here
+| 1 | `hyperpolymath` | 343 | estate core
+| 2 | `open-source` | 338 | estate core
+| 3 | `epistemic-computing` | 341 | estate core
+| 4 | `epistemic-infrastructure` | 341 | estate core
+| 5 | `equivalence-aware-computing` | 332 | estate core
+| 6 | `typed-provenance` | 333 | estate core
+| 7 | `veridical-computing` | 341 | estate core
+| 8 | `rust` | 96 | 8-crate Cargo workspace, primary language
+| 9 | `monorepo` | 2 | core, providers, cache, search, vfs, cli, integrations, ios
+| 10 | `cli-tool` | 78 | the `cfk` binary
+| 11 | `developer-tools` | 76 | estate convention for CLI utilities
+| 12 | `systems-programming` | 12 | filesystems, FUSE, transports
+| 13 | `file-operations` | 1 | `januskey` precedent for estate file tooling
+| 14 | `cloud-sync` | 1 | `cloud-sync-tuner` precedent; the cloud-backend premise
+| 15 | `distributed-systems` | 2 | IPFS, AFS, Ceph, Syncthing, 9P backends
+| 16 | `cross-platform` | 2 | Linux, macOS, Windows/WinFsp, RISC-V, iOS
+| 17 | `tui` | 2 | `cfk-tui`
+| 18 | `spark-ada` | 8 | the Ada/SPARK TUI and its proof obligation
+| 19 | `zig-ffi` | 2 | `src/interface/ffi`, `raze-tui` precedent
+| 20 | `formal-verification` | 60 | `verification/`, SPARK proofs planned
+|===
+
+Rejected as weaker: `ada` (subsumed by `spark-ada`, and the estate pairs them
+only where Ada is the whole story), `just` (true but not distinctive - 34 KB
+of Justfile is estate plumbing, not this repo's value), `ipfs` (one backend
+among fifteen), `file-manipulation` (redundant with `file-operations`),
+`nickel` (the Nickel config layer is planned, so claiming it overclaims).
+
+Apply with:
+
+[source,bash]
+----
+gh repo edit hyperpolymath/czech-file-knife \
+  --description "Cloud-native Swiss File Knife: a Rust workspace that puts local, cloud, distributed and exotic storage behind one filesystem interface and a single cfk CLI. Local backend and CLI work today; cache, search, FUSE, cloud backends and the Ada/SPARK TUI are scaffolded." \
+  --add-topic hyperpolymath --add-topic open-source \
+  --add-topic epistemic-computing --add-topic epistemic-infrastructure \
+  --add-topic equivalence-aware-computing --add-topic typed-provenance \
+  --add-topic veridical-computing --add-topic rust \
+  --add-topic monorepo --add-topic cli-tool \
+  --add-topic developer-tools --add-topic systems-programming \
+  --add-topic file-operations --add-topic cloud-sync \
+  --add-topic distributed-systems --add-topic cross-platform \
+  --add-topic tui --add-topic spark-ada \
+  --add-topic zig-ffi --add-topic formal-verification
+----
+
+Reverting is one command per axis: `--remove-topic <t>` and
+`--description ""`.
+
+=== WP1 - Refresh `actions.lock` (MUST, local, cheapest win)
+
+Fixes F5, and by F6 clears three checks: `actions.lock is in sync with the
+workflow YAML`, `governance / Actions lockfile verify`, `scorecard / Run
+Scorecard`.
+
+Run `gh actions-lock`, commit the lockfile, and verify with the real gate
+rather than the diagnostic:
+
+[source,bash]
+----
+gh actions-lock            # rewrite the lockfile from the YAML
+./scripts/check-lock-sync.sh   # needs gawk: apt-get install -y gawk
+----
+
+*Acceptance:* `check-lock-sync.sh` exits 0 on a machine with gawk; the three
+checks are green on `main`. Watch for the clause-3 trap the script documents:
+hand-adding a `workflows:` entry without a matching `dependencies:` record is
+*worse* than adding nothing, because GitHub then refuses to start the run.
+
+=== WP2 - Complete the mint (MUST, local)
+
+Fixes F1 and F2, and clears `openssf-compliance` and
+`call-estate-audit / estate-audit`.
+
+`just repo-init` is the entry point and already exists
+(`build/just/repo-init.just`). It substitutes the tokens, swaps the deed's
+repo-identity block for `build/templates/identity.deed.in` filled for this
+repo, and writes `.machine_readable/PROVENANCE.a2ml`. Then regenerate the
+arrival pack, which is generated, not hand-edited:
+
+[source,bash]
+----
+just repo-init
+just claude-md
+----
+
+Values the mint needs, all derivable and none needing invention: project
+`Czech File Knife`; slug `czech-file-knife`; owner `hyperpolymath`; author
+`Jonathan D.A. Jewell`; email `j.d.a.jewell@open.ac.uk`.
+
+Two things to settle before running it, because a mechanical substitution will
+not decide them:
+
+* **The deed filename.** `rsr-template-repo_chora.deed` is the template's
+  name. Under one-deed-per-repo it should become
+  `czech-file-knife_chora.deed`, which is a rename that
+  `deed-validate.yml`, `k9-validate.yml` and the `(ply)` paths all have to
+  agree on. Check the deed ecosystem's naming rule before renaming.
+* **`.github/CODEOWNERS`.** Its `* @` rule still carries the unfilled OWNER
+  token and must become a real owner or team. This is the one placeholder with
+  a live security consequence: right now the CODEOWNERS rule for
+  `.github/workflows/` and `.machine_readable/` points at a nonexistent
+  account, so those paths are effectively unowned.
+
+*Acceptance:* `bash scripts/check-no-placeholders.sh .` exits 0; `CLAUDE.md`
+reads `czech-file-knife` in its identity block; `estate-audit` green.
+
+=== WP3 - Fix `Canon lockstep` at source, then pin locally (MUST, upstream then local)
+
+Doctrine #14: solutions at source. Do not fork the job.
+
+**Upstream, in `rsr-template-repo`:** the `canon-lockstep` job must read the
+pin from `${{ github.repository }}`'s own deed `(canon)` clause, not from a
+hard-coded `hyperpolymath/rsr-template-repo` URL at a SHA that only exists
+there. As written the job is unsatisfiable in every minted repo and in the
+template itself, because `rsr-profile.a2ml` no longer exists upstream.
+
+**Local, here:** once the deed has an `(canon)` clause (WP2), pin it to canon
+2.1.2. The hashes already agree - only `version` moves:
+
+....
+(canon
+  :version "2.1.2"
+  :criteria-sha256 "6a5aa8857bd0d0d58ef48827938ca17c251b6b854dacf59d306388d61694d82a"
+  :gates-sha256 "e70efd2f53c9445e30da4baf770366f04a4a84ffd844a01426e587e565b53e6a"
+  :lockstep-since "2026-09-17"
+  :order "spine-adopts-then-canon-releases")
+....
+
+This matches the template's own clause byte for byte at `df09a6c5`, which is
+the point: the pin is a copy, not an invention.
+
+**Also upstream:** raise that `canon.lock` declares `version = "2.1.2"` with
+`status = "draft"` and an all-zero `commit`. And raise that
+`Validate DEED manifests` passes a deed with no `(canon)` clause.
+
+*Acceptance:* `Canon lockstep` green on `main`; the job reads this repository.
+
+=== WP4 - The Swift ruling (MUST, owner decision, blocking)
+
+Issue #5 offers three arms. Recorded here with the recommendation labelled per
+doctrine #15.
+
+[cols="1,2,2", options="header"]
+|===
+| Arm | What it means | Assessment
+| (a) exempt | scope `cfk-ios/swift/**` in `.hypatia-ignore` or `.hypatia-baseline.json` | cheapest, and it is what issue #5 lists first. Locally it silences the check; canonically it leaves the policy false
+| (b) remove | delete `cfk-ios/swift/` | loses the iOS File Provider capability, and with it the reason `cfk-ios` exists
+| (c) rewrite in Rust | reimplement the extension in Rust | not possible; Apple does not accept a Rust app-extension target
+|===
+
+**(c) is not available and should be struck from the issue.** The choice is
+(a) or an upstream carve-out, and the elegant arm is the carve-out: Swift
+permitted under `*-ios/swift/**` as minimal delegating shims into the Rust
+core, LoC-capped, exactly paralleling the existing Android/Java carve-out in
+the same gate step. This repo's `cfk-ios` crate is already the Rust side of
+that seam.
+
+Until the ruling lands, the honest interim is arm (a) with a stated reason in
+the exemption entry - not a bare path. `.hypatia-ignore` already carries that
+house style: every entry in it has a reason comment.
+
+*Acceptance:* the ruling recorded on issue #5; the check green on `main`; if
+the ruling is a carve-out, a `standards` issue carries it.
+
+=== WP5 - Replace the seven `unwrap()` calls with `CfkError` (MUST, local)
+
+Fixes F8 and closes Hypatia alerts #33 to #35. Every one of the seven is on a
+path built from a CLI argument, so each is a panic on hostile input in a tool
+whose purpose is to be aimed at arbitrary filesystems.
+
+The shape is uniform - `Path::to_str` and `Path::file_name` both return
+`Option`, and `CfkError` already exists:
+
+[source,rust]
+----
+let dir = dir.to_str().ok_or_else(|| {
+    CfkError::Other(format!("non-UTF-8 path: {}", dir.display()))
+})?;
+----
+
+A dedicated variant such as `CfkError::InvalidPath(PathBuf)` reads better than
+`Other` and gives the CLI one place to render the message. Check `cfk-core/src/error.rs`
+first; if the variant is absent, adding it is in scope for this WP.
+
+*Acceptance:* zero `unwrap()` on user-influenced paths in `cfk-integrations`;
+alerts #33 to #35 closed as fixed; `cargo test --workspace` green; a
+regression test per crate feeding a non-UTF-8 path and a `..` path and
+asserting an `Err`, not a panic.
+
+=== WP6 - Make the feature matrix honest (SHOULD, local)
+
+Fixes F9's blind spot. Two independent moves.
+
+**Add a feature dimension to CI.** The estate's `rust-ci-reusable.yml` accepts
+`check_args`, `clippy_args` and `test_args` inputs. Passing
+`--features all` (or `--all-features`) from this repo's `rust-ci.yml` wrapper
+turns an untested surface into a tested one without forking the reusable:
+
+[source,yaml]
+----
+jobs:
+  rust-ci:
+    uses: hyperpolymath/standards/.github/workflows/rust-ci-reusable.yml@da2c748aad55c1a1dcba00b60fe4a35017bc6540
+    with:
+      check_args: --features all
+----
+
+This will go red immediately, by design: it surfaces the five `compile_error!`
+guards. That is the correct order - wire the gate, let it show the holes, then
+WP7 closes them.
+
+**Rule on `ceph`.** A 464-line module that its own manifest says carries 32
+compile errors is either repaired to the current `StorageBackend` trait or
+deleted. Doctrine #1: holes before features. Leaving it exported under a
+feature no gate enables is the worst of the three, because the README lists
+Ceph as a backend.
+
+*Acceptance:* a CI dimension compiles the `all` feature set; `ceph` either
+compiles or is gone, and the README matches whichever.
+
+=== WP7 - Write or delete the five stub features (SHOULD, local)
+
+`cfk-cache`: `surrealdb`, `lmdb`, `dragonfly`. `cfk-integrations`: `ocr`,
+`eza`.
+
+The `compile_error!` guards are good engineering and should stay until the
+modules exist. The question is whether the *features* should. A declared
+feature with no implementation is a promise to the reader of `Cargo.toml`.
+`cfk-providers` already made the right call once - it declares `ceph` only so
+the `cfg` is known, and documents why it is out of `all`.
+
+Recommended: delete the four that have no near-term plan (`dragonfly`,
+`surrealdb`, `ocr`, `eza`) and keep only those with a dated roadmap entry. The
+README already distinguishes "Currently Working" from "Planned" honestly; the
+feature flags should match that table rather than exceed it.
+
+*Acceptance:* every declared feature compiles under `--features all`;
+`Cargo.toml` feature lists match the README status table.
+
+=== WP8 - A2ML retirement migration (COULD, upstream decision)
+
+F10 is an ordering question, not a coding task. Forty `.a2ml` files here, a
+local gate requiring `STATE.a2ml`, and a canon that retired the format on
+2026-10-09. The migration target is deed clauses plus k9 contracts, which is
+already where the template's descriptive metadata lives.
+
+Do not start this locally. Raise it on `standards` and ask which moves first:
+the estate's `ossf-best-practices` requirement, or the repos that satisfy it.
+
+=== WP9 - canon.lock release hygiene (COULD, upstream)
+
+`version = "2.1.2"`, `status = "draft"`, `commit = 0000...`. Either the
+release is unfinished or the fields are not being filled at release. Either
+way it is a canon-side defect that makes every downstream pin unverifiable
+against a checkout.
+
+== Sequencing
+
+[cols="1,2,1,2", options="header"]
+|===
+| Wave | Packages | Unblocks | Depends on
+| A | WP1 | 3 red checks | nothing
+| B | WP2 | 2 red checks, and the deed's `(canon)` home | nothing
+| C | WP3 | `Canon lockstep` | WP2 for the clause; upstream job fix
+| D | WP4, WP5 | the anti-pattern policy and Hypatia #33 to #35 | WP4 needs an owner ruling
+| E | WP6, WP7 | the untested feature surface | WP6 before WP7, deliberately
+| F | WP8, WP9 | nothing red today | upstream rulings
+|===
+
+Wave A first because it is one command and clears three checks. Wave B second
+because it is the largest single correctness gain and it unblocks Wave C.
+Wave E is ordered gate-then-holes on purpose: WP6 makes the holes visible
+before WP7 is asked to fill them, which is the only ordering in which "done"
+is measurable.
+
+After Wave A and B, five of the seven red checks should be green without any
+owner decision.
+
+== Verification ledger
+
+What was actually run, and what came back:
+
+[cols="2,1,2", options="header"]
+|===
+| Command | Result | Finding
+| `bash scripts/check-no-placeholders.sh .` | exit 1 | 90 files, F1
+| `bash scripts/check-root-shape.sh .` | exit 0 | 59 entries, 50 required
+| `bash scripts/check-no-md-in-docs.sh .` | exit 0 | clean
+| `bash scripts/check-no-vlang.sh .` | exit 0 | clean
+| `bash scripts/check-lock-sync.sh` | exit 1 | no gawk; F5 from re-implementation
+| canon.lock readers from `dogfood-gate.yml` | mismatch | version only, F4(b)
+| `gh api .../commits/68b2930f` on rsr-template-repo | HTTP 422 | F4(a)
+| `gh api .../contents/.machine_readable` on rsr-template-repo | no rsr-profile.a2ml | F4(a)
+| deed diff vs `rsr-template-repo@df09a6c5` | 958 lines | F3
+| `gh api .../check-runs` on `main` | 7 failures of 62 | the red list
+| `gh repo edit` | HTTP 403 | WP0 blocked
+|===
+
+Unverified and owed: the whole Rust build (no toolchain here), the real
+`check-lock-sync.sh` under gawk, and the code-scanning alert states behind
+403.
