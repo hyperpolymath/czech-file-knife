@@ -465,9 +465,9 @@ not decide them:
   agree on. Check the deed ecosystem's naming rule before renaming.
 * **`.github/CODEOWNERS`.** Its `* @` rule still carries the unfilled OWNER
   token and must become a real owner or team. This is the one placeholder with
-  a live security consequence: right now the CODEOWNERS rule for
-  `.github/workflows/` and `.machine_readable/` points at a nonexistent
-  account, so those paths are effectively unowned.
+  missing ownership metadata. Treat it as a live security consequence only if
+  the effective ruleset requires Code Owner approval and GitHub treats the
+  unresolved owner token as an absent owner.
 
 *Acceptance:* `bash scripts/check-no-placeholders.sh .` exits 0; `CLAUDE.md`
 reads `czech-file-knife` in its identity block; `estate-audit` green.
