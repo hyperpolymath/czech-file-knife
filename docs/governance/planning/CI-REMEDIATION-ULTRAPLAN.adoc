@@ -258,9 +258,10 @@ exactly, which corroborates its claim that these are alerts #33 to #35 moved
 by `cargo fmt` rather than new findings.
 
 `Path::to_str` returns `None` for non-UTF-8 paths and `Path::file_name`
-returns `None` for `..` and for a path ending in `..`. Both are reachable from
-a CLI argument, so both are panics on attacker-shaped input in a tool whose
-job is to be pointed at arbitrary filesystems.
+returns `None` for `..` and for a path ending in `..`. Unsuitable paths supplied
+by a caller can therefore panic the affected integration helpers. The repository
+CLI does not invoke these helpers; reaching these panics requires an integration
+caller.
 
 === F9 - `--features all` and `ceph` are never compiled, so green means less than it looks
 
