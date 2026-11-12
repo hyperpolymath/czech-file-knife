@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: CC-BY-SA-4.0
 // SPDX-FileCopyrightText: Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-= Contributing — rsr-template-repo
+= Contributing — czech-file-knife
 :toc: left
 
 Contributors work on the *spine*: the template every RSR repo is minted
@@ -12,15 +12,15 @@ is the estate's bar.
 [source,bash]
 ----
 # Clone the repository
-git clone https://github.com/hyperpolymath/rsr-template-repo.git
-cd rsr-template-repo
+git clone https://github.com/hyperpolymath/czech-file-knife.git
+cd czech-file-knife
 
 # Using Guix (recommended for reproducibility)
 guix shell -D -f build/guix.scm
 
 # Or using toolbox/distrobox
-toolbox create rsr-template-repo-dev
-toolbox enter rsr-template-repo-dev
+toolbox create czech-file-knife-dev
+toolbox enter czech-file-knife-dev
 # Install dependencies manually
 
 # Verify setup
@@ -80,10 +80,10 @@ and include:
 
 Look for issues labelled:
 
-* https://github.com/hyperpolymath/rsr-template-repo/labels/good%20first%20issue[`good first issue`] — Simple Perimeter 3 tasks
-* https://github.com/hyperpolymath/rsr-template-repo/labels/help%20wanted[`help wanted`] — Community help needed
-* https://github.com/hyperpolymath/rsr-template-repo/labels/documentation[`documentation`] — Docs improvements
-* https://github.com/hyperpolymath/rsr-template-repo/labels/perimeter-3[`perimeter-3`] — Community sandbox scope
+* https://github.com/hyperpolymath/czech-file-knife/labels/good%20first%20issue[`good first issue`] — Simple Perimeter 3 tasks
+* https://github.com/hyperpolymath/czech-file-knife/labels/help%20wanted[`help wanted`] — Community help needed
+* https://github.com/hyperpolymath/czech-file-knife/labels/documentation[`documentation`] — Docs improvements
+* https://github.com/hyperpolymath/czech-file-knife/labels/perimeter-3[`perimeter-3`] — Community sandbox scope
 
 == Development workflow
 
@@ -112,16 +112,7 @@ We follow https://www.conventionalcommits.org/[Conventional Commits]:
 [optional footer]
 ----
 
-== Cross-references
-
-This root document exists because the estate docs gate
-(`hyperpolymath/standards` `scripts/check-docs-presence.sh`) requires
-`CONTRIBUTING.md`, `CONTRIBUTING.adoc`, or `3-practice/CONTRIBUTING.adoc`
-at the repository root. The legacy copy at
-link:.github/CONTRIBUTING.md[.github/CONTRIBUTING.md] predates that gate;
-this document supersedes it.
-
-== Signed commits
+=== Signed commits
 
 Every commit that reaches the default branch must be signed; a ruleset refuses
 unsigned pushes. Estate policy:
@@ -137,3 +128,12 @@ https://github.com/hyperpolymath/standards/blob/main/docs/SIGNING-POLICY.adoc[SI
   not just the result, so one unsigned commit blocks the merge. Re-create such a
   branch with signed commits (`git cherry-pick -S`) and open a new PR.
   Rebase-merge replays commits unsigned and is disabled.
+
+== Cross-references
+
+This root document exists because the estate docs gate
+(`hyperpolymath/standards` `scripts/check-docs-presence.sh`) requires
+`CONTRIBUTING.md`, `CONTRIBUTING.adoc`, or `3-practice/CONTRIBUTING.adoc`
+at the repository root. The legacy copy at
+link:.github/CONTRIBUTING.md[.github/CONTRIBUTING.md] predates that gate;
+this document supersedes it.
