@@ -1,5 +1,6 @@
 = Czech File Knife
 image:https://img.shields.io/badge/License-MPL_2.0-blue.svg[MPL-2.0-or-later,link="https://opensource.org/licenses/MPL-2.0"]
+image:https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/hyperpolymath/czech-file-knife/governance-badges/badges/k9.json[K9 conformance,link="https://github.com/hyperpolymath/czech-file-knife/actions/workflows/dogfood-gate.yml"]
 
 
 
